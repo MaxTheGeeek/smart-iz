@@ -59,3 +59,19 @@ sidecar/*.sqlite
 *.db
 *.sqlite
 data/
+
+# --- Local Environment Variables & Secrets ---
+.env
+.env.local
+.env.development
+.env.production
+*.env
+
+# --- Python Testing & Cache ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# --- TypeScript Caches ---
+*.tsbuildinfo
