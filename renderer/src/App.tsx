@@ -101,17 +101,21 @@ export default function App() {
       <div className="window">
         <WindowChrome />
         <div className="shell flex items-center justify-center" style={{ minHeight: 'calc(100vh - 38px)' }}>
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-5">
             <div style={{
-              width: 50,
-              height: 50,
+              width: 48,
+              height: 48,
               borderRadius: '50%',
               border: '2.5px solid var(--line)',
               borderTopColor: 'var(--burgundy)',
               animation: 'spin 1.2s linear infinite',
               margin: '0 auto'
             }} />
-            <h1 className="font-serif italic text-2xl text-ink">Smartiz</h1>
+            <img 
+              src="logos/lockups/smartiz-lockup.svg" 
+              alt="Smartiz" 
+              style={{ height: '36px', width: 'auto', display: 'block', margin: '0 auto' }} 
+            />
             <p className="text-xs text-muted">Booting local intelligence pipeline...</p>
           </div>
         </div>

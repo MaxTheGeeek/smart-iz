@@ -196,14 +196,13 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar select-none">
-      <div className="brand cursor-pointer" onClick={() => resetStore()}>
-        <div className="brand-mark">S</div>
-        <div>
-          <div className="brand-name">
-            Smart<em>iz</em>
-          </div>
-          <div className="brand-sub">v 1.0 · local</div>
-        </div>
+      <div className="brand cursor-pointer" onClick={() => resetStore()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', borderBottom: '1px dashed var(--line)', paddingBottom: '14px', paddingTop: '4px' }}>
+        <img 
+          src="logos/lockups/smartiz-lockup.svg" 
+          alt="Smartiz" 
+          style={{ height: '34px', width: 'auto', display: 'block' }} 
+        />
+        <div className="brand-sub" style={{ paddingLeft: '4px', margin: 0, opacity: 0.8 }}>v 1.1.1 · local</div>
       </div>
 
       <button className="new-btn" onClick={() => resetStore()}>

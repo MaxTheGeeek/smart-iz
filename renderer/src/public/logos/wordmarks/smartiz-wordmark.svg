@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 110" font-family="Geist, system-ui, -apple-system, sans-serif" font-size="100" letter-spacing="-4.5">
+  <title>Smartiz wordmark</title>
+  <text x="0" y="86" font-weight="300" fill="#EFE9D6">smart</text>
+  <text x="215" y="86" font-weight="700" fill="#C26845">iz</text>
+  <circle cx="300" cy="80" r="7" fill="#C26845"/>
+</svg>

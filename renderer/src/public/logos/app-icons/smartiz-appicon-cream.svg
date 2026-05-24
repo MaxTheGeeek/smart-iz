@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Smartiz app icon</title>
+  <rect width="1024" height="1024" rx="229" ry="229" fill="#EFE9D6"/>
+  <g transform="translate(179.2 179.2) scale(6.656)">
+    <path d="M50 4 C51 30 53 42 60 49 C62 50.5 65 50.5 96 50 C65 49.5 62 49.5 60 51 C53 58 51 70 50 96 C49 70 47 58 40 51 C38 49.5 35 49.5 4 50 C35 50.5 38 50.5 40 49 C47 42 49 30 50 4 Z" fill="#C26845"/>
+  </g>
+</svg>

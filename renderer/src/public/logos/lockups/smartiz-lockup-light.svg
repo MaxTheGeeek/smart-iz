@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 110" font-family="Geist, system-ui, -apple-system, sans-serif" font-size="100" letter-spacing="-4.5">
+  <title>Smartiz lockup</title>
+  <g transform="translate(0 12) scale(0.85)">
+    <path d="M50 4 C51 30 53 42 60 49 C62 50.5 65 50.5 96 50 C65 49.5 62 49.5 60 51 C53 58 51 70 50 96 C49 70 47 58 40 51 C38 49.5 35 49.5 4 50 C35 50.5 38 50.5 40 49 C47 42 49 30 50 4 Z" fill="#6B1F1F"/>
+  </g>
+  <g transform="translate(120 0)">
+    <text x="0" y="86" font-weight="300" fill="#14130F">smart</text>
+    <text x="215" y="86" font-weight="700" fill="#6B1F1F">iz</text>
+    <circle cx="300" cy="80" r="7" fill="#6B1F1F"/>
+  </g>
+</svg>
