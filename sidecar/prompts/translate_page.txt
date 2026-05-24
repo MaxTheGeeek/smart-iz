@@ -1,0 +1,19 @@
+Translate the following text into {target_language}.
+
+RTL LANGUAGE: {is_rtl}
+
+RULES:
+1. Preserve every paragraph break exactly as it appears in the original.
+2. Do NOT add explanations, footnotes, or translator notes.
+3. Do NOT translate proper nouns (names of people, companies, places) unless they have a widely accepted translation.
+4. Technical terms (algorithm names, software names, protocols) must be kept in English exactly as written,
+   but in RTL languages, wrap them with Unicode bidi isolate markers so they render correctly:
+   use \u2066 before the English term and \u2069 after it.
+   Example (Persian): "الگوریتم \u2066Paxos\u2069 توسط..."
+5. For RTL languages: every paragraph must be a complete RTL sentence. 
+   Do NOT mix directions within a paragraph except for the English term markers above.
+6. Keep the same tone and register as the original (academic, casual, technical, literary).
+7. Return ONLY the translated text. No preamble, no "Here is the translation:".
+
+ORIGINAL TEXT:
+{page_text}
