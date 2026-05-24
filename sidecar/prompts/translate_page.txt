@@ -14,6 +14,8 @@ RULES:
    Do NOT mix directions within a paragraph except for the English term markers above.
 6. Keep the same tone and register as the original (academic, casual, technical, literary).
 7. Return ONLY the translated text. No preamble, no "Here is the translation:".
+8. Never leak characters or translations from unrelated languages (e.g., do NOT output Chinese characters like "第三-person" or "第三" when translating to Persian).
+9. Translate terms like "Third-party" to "شخص ثالث" in Persian (Farsi) and "طرف ثالث" in Arabic, rather than leaving them untranslated or mistranslating them.
 
 ORIGINAL TEXT:
 {page_text}

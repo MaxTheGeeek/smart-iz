@@ -33,6 +33,8 @@ def fix_rtl_text(text: str, lang: str) -> str:
 
     # Remove standard Unicode isolate markers as we do visual ordering manually now for PDF
     text_clean = text.replace("\u2066", "").replace("\u2069", "")
+    text_clean = text_clean.replace("\\u2066", "").replace("\\u2069", "")
+    text_clean = text_clean.replace("u2066", "").replace("u2069", "")
 
     paragraphs = text_clean.split("\n")
     fixed = []
@@ -136,7 +138,11 @@ async def translate_page(
         yield {"type": "error", "message": f"Translation pipeline error: {str(e)}"}
         return
 
-    # 5. Cache the raw translation (browser uses this with native CSS)
-    await set_cached_page(doc_id, chapter_index, page_index_in_chapter, target_lang, full_translation)
+    # 5. Normalize literal escape sequences into actual Unicode isolate characters
+    clean_translation = full_translation.replace("\\u2066", chr(0x2066)).replace("\\u2069", chr(0x2069))
+    clean_translation = clean_translation.replace("u2066", chr(0x2066)).replace("u2069", chr(0x2069))
 
-    yield {"type": "done", "text": full_translation}
+    # 6. Cache the raw translation (browser uses this with native CSS)
+    await set_cached_page(doc_id, chapter_index, page_index_in_chapter, target_lang, clean_translation)
+
+    yield {"type": "done", "text": clean_translation}

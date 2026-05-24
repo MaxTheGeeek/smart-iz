@@ -37,8 +37,18 @@ export default function TranslatorScreen() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [readerMode, setReaderMode] = useState(true)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const getCleanedTranslationText = (text: string) => {
+    if (!text) return ''
+    return text
+      .replace(/\\u2066/g, '\u2066')
+      .replace(/\\u2069/g, '\u2069')
+      .replace(/u2066/g, '\u2066')
+      .replace(/u2069/g, '\u2069')
+  }
 
   // ── 1. Upload & Parsing Workflows ──
   const handleUpload = async (file: File) => {
@@ -512,6 +522,30 @@ export default function TranslatorScreen() {
               </button>
             </div>
 
+            {/* View Mode Segmented Toggle Control */}
+            <div className="flex items-center gap-1 bg-surface-2 p-0.5 rounded-lg border border-line text-[10px]">
+              <button
+                className={`uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md transition-all duration-150 ${
+                  readerMode 
+                    ? 'bg-burgundy text-white shadow-sm' 
+                    : 'text-muted hover:text-ink'
+                }`}
+                onClick={() => setReaderMode(true)}
+              >
+                📖 Reader Mode
+              </button>
+              <button
+                className={`uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md transition-all duration-150 ${
+                  !readerMode 
+                    ? 'bg-burgundy text-white shadow-sm' 
+                    : 'text-muted hover:text-ink'
+                }`}
+                onClick={() => setReaderMode(false)}
+              >
+                🪟 Split View
+              </button>
+            </div>
+
             {/* Page Cache Hits Tracker Dots */}
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-mono text-muted uppercase tracking-wider mr-1">Chapter Cache Hits:</span>
@@ -539,25 +573,27 @@ export default function TranslatorScreen() {
           </div>
 
           {/* Split Text Container */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden h-full">
-            {/* Left Pane: Original Text */}
-            <div className="flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full">
-              <div className="p-3 border-b border-line bg-paper-warm flex items-center justify-between text-xs text-muted select-none">
-                <span className="font-mono uppercase tracking-wider font-semibold">Original PDF Plaintext</span>
-                <span>Latin glyphs</span>
+          <div className="flex-1 flex gap-4 overflow-hidden h-full">
+            {/* Left Pane: Original Text (Hidden in Reader Mode) */}
+            {!readerMode && (
+              <div className="flex-1 flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full">
+                <div className="p-3 border-b border-line bg-paper-warm flex items-center justify-between text-xs text-muted select-none">
+                  <span className="font-mono uppercase tracking-wider font-semibold">Original PDF Plaintext</span>
+                  <span>Latin glyphs</span>
+                </div>
+                <div
+                  className="flex-1 p-5 overflow-y-auto text-xs leading-relaxed text-ink bg-surface border-t border-line whitespace-pre-wrap select-text"
+                  style={{ fontFamily: 'monospace' }}
+                >
+                  {originalText || (
+                    <span className="text-muted italic">Reading document characters...</span>
+                  )}
+                </div>
               </div>
-              <div
-                className="flex-1 p-5 overflow-y-auto text-xs leading-relaxed text-ink bg-surface border-t border-line whitespace-pre-wrap select-text"
-                style={{ fontFamily: 'monospace' }}
-              >
-                {originalText || (
-                  <span className="text-muted italic">Reading document characters...</span>
-                )}
-              </div>
-            </div>
+            )}
 
             {/* Right Pane: RTL Streamed Translation */}
-            <div className="flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full">
+            <div className={`flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full ${readerMode ? 'flex-1 max-w-3xl mx-auto w-full' : 'flex-1'}`}>
               <div className="p-3 border-b border-line bg-paper-warm flex items-center justify-between text-xs text-muted select-none">
                 <span className="font-mono uppercase tracking-wider font-semibold">LLM Translation</span>
                 <span className="flex items-center gap-1 text-[10px]">
@@ -567,7 +603,7 @@ export default function TranslatorScreen() {
               </div>
               
               <div
-                className="flex-1 p-5 overflow-y-auto text-sm leading-relaxed text-ink bg-surface border-t border-line space-y-3 select-text"
+                className="flex-1 p-8 overflow-y-auto text-base leading-loose text-ink bg-surface border-t border-line space-y-4 select-text"
                 style={{
                   fontFamily: isRtl ? 'Vazirmatn, system-ui, sans-serif' : 'inherit',
                   direction: isRtl ? 'rtl' : 'ltr',
@@ -575,11 +611,11 @@ export default function TranslatorScreen() {
                 }}
               >
                 {translatedText ? (
-                  translatedText.split('\n\n').map((p, idx) => (
+                  getCleanedTranslationText(translatedText).split('\n\n').map((p, idx) => (
                     <p key={idx} className="relative">
                       {p}
                       {idx === translatedText.split('\n\n').length - 1 && isTranslating && (
-                        <span className="inline-block w-1 h-3.5 bg-burgundy animate-pulse align-middle ml-0.5 mr-0.5" />
+                        <span className="inline-block w-1.5 h-4 bg-burgundy animate-pulse align-middle ml-0.5 mr-0.5" />
                       )}
                     </p>
                   ))
