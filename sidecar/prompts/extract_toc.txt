@@ -1,0 +1,20 @@
+You are analyzing the table of contents of a PDF book.
+
+The book has {total_pages} total pages.
+
+Below are the first pages of the book, which should contain the table of contents.
+Extract every chapter, section, or major part listed.
+
+Return ONLY a valid JSON array. No markdown, no explanation.
+Each item must have:
+{
+  "chapter_index": <integer, 0-based>,
+  "title": "<exact chapter/section title>",
+  "page_start": <integer, 0-based page index where this chapter begins>,
+  "page_end": <integer, 0-based page index where this chapter ends — your best estimate>
+}
+
+If the document has no table of contents, treat every 20 pages as one chapter and title them "Part 1", "Part 2", etc.
+
+BOOK PAGES:
+{toc_text}
