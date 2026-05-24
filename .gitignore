@@ -1,0 +1,61 @@
+# =========================================================================
+#                    Smartiz Git Ignore Configuration
+# =========================================================================
+
+# --- Systems & OS Trash ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.log
+*.tmp
+
+# --- IDEs & Editors Configurations ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Technical Roadmap & Internal Blueprints ---
+COVERCRAFT_AI_ROADMAP.md
+
+# --- Private Design Assets ---
+renderer/src/public/ui/
+**/ui/
+
+# --- Node / JavaScript Dependencies & Compiles ---
+node_modules/
+dist/
+dist/installers/
+out/
+.npm
+.eslintcache
+
+# --- Python Sidecar Environment & Compiles ---
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+sidecar/.venv/
+sidecar/venv/
+.venv/
+venv/
+ENV/
+env/
+sidecar/smartiz-sidecar.spec
+sidecar/build/
+sidecar/dist/
+
+# --- SQLite Databases & local stores ---
+sidecar/*.db
+sidecar/*.sqlite
+*.db
+*.sqlite
+data/
