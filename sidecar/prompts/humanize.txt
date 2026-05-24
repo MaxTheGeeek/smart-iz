@@ -1,0 +1,10 @@
+Review the following cover letter. Your only task:
+1. Replace any AI-typical phrases (e.g. "I am thrilled to", "leverage", "passionate about")
+2. Remove all em-dashes (—). Replace with commas or restructure the sentence.
+3. Ensure sentence variety — mix short and long sentences.
+4. Make it sound like a real person wrote it, not an AI.
+5. Do NOT change the meaning, facts, or structure. Only improve naturalness.
+6. Return ONLY the improved cover letter text. No explanation.
+
+COVER LETTER:
+{generated_text}
