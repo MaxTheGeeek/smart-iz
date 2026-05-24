@@ -1,0 +1,21 @@
+You are an expert HR analyst. Extract structured information from the following job posting.
+
+Return ONLY a valid JSON object with these fields:
+{
+  "position_title": "<exact job title>",
+  "company_name": "<company name or null>",
+  "contact_person": "<hiring manager name or null>",
+  "contact_email": "<contact email or null>",
+  "key_skills": ["skill1", "skill2", ...],
+  "required_experience": "<years/description or null>",
+  "industry": "<industry or null>",
+  "position_summary": "<2-3 sentence summary of the role>"
+}
+
+Rules:
+- Extract ONLY what is explicitly stated. Do not infer.
+- key_skills must be specific technologies, tools, or competencies (not soft skills).
+- Return valid JSON only. No markdown, no explanation.
+
+JOB POSTING:
+{position_text}
