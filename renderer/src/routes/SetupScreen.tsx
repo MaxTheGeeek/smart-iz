@@ -262,25 +262,28 @@ export default function SetupScreen() {
               2. Cover letter persona voice
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {stylesList.map((st) => (
-                <button
-                  key={st.id}
-                  className={`text-left p-2.5 rounded-xl border text-xs transition-all duration-150 ${
-                    selectedStyleType === st.id
-                      ? 'border-burgundy bg-burgundy-soft/20 text-burgundy shadow-sm'
-                      : 'border-line hover:border-ink-2 bg-surface text-ink-2'
-                  }`}
-                  onClick={() => setSelectedStyleType(st.id)}
-                >
-                  <div className="font-semibold text-ink text-sm flex items-center justify-between">
-                    <span>{st.label}</span>
-                    {selectedStyleType === st.id && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-burgundy" />
-                    )}
-                  </div>
-                  <div className="text-muted mt-1 leading-snug">{st.desc}</div>
-                </button>
-              ))}
+              {stylesList.map((st) => {
+                const isSelected = selectedStyleType === st.id
+                return (
+                  <button
+                    key={st.id}
+                    className={`text-left p-2.5 rounded-xl border text-xs transition-all duration-150 ${
+                      isSelected
+                        ? 'border-burgundy border-l-4 bg-burgundy/10 text-ink shadow-sm'
+                        : 'border-line hover:border-ink-2 bg-surface text-ink-2'
+                    }`}
+                    onClick={() => setSelectedStyleType(st.id)}
+                  >
+                    <div className={`text-sm flex items-center justify-between ${isSelected ? 'text-burgundy font-medium' : 'text-ink font-normal'}`}>
+                      <div className="flex items-center gap-1.5">
+                        {isSelected && <span className="text-burgundy">●</span>}
+                        <span>{st.label}</span>
+                      </div>
+                    </div>
+                    <div className="text-muted mt-1 leading-snug">{st.desc}</div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 

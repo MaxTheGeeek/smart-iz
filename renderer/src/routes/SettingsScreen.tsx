@@ -323,62 +323,59 @@ export default function SettingsScreen() {
         </button>
       </div>
 
-      {/* Layout Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+      {/* Horizontal Tabs Navigation */}
+      <div className="flex border-b border-line pb-1 gap-1 select-none overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 text-sm font-medium transition-all duration-150 ${
+            activeTab === 'profile'
+              ? 'border-burgundy text-burgundy font-bold'
+              : 'border-transparent text-muted hover:text-ink hover:border-line'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          Applicant Profile
+        </button>
         
-        {/* Navigation Sidebar */}
-        <div className="lg:col-span-1 bg-surface border border-line rounded-2xl p-4 flex flex-col space-y-1.5 shadow-sm select-none">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-              activeTab === 'profile'
-                ? 'bg-burgundy text-white shadow-md'
-                : 'hover:bg-surface-2 text-ink-2'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            Applicant Profile
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('resumes')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-              activeTab === 'resumes'
-                ? 'bg-burgundy text-white shadow-md'
-                : 'hover:bg-surface-2 text-ink-2'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            My Resumes ({resumes.length})
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('templates')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-              activeTab === 'templates'
-                ? 'bg-burgundy text-white shadow-md'
-                : 'hover:bg-surface-2 text-ink-2'
-            }`}
-          >
-            <Layout className="w-4 h-4" />
-            PDF Templates ({templates.length})
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('apiKeys')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-              activeTab === 'apiKeys'
-                ? 'bg-burgundy text-white shadow-md'
-                : 'hover:bg-surface-2 text-ink-2'
-            }`}
-          >
-            <Key className="w-4 h-4" />
-            API Keys & LLMs
-          </button>
-        </div>
+        <button
+          onClick={() => setActiveTab('resumes')}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 text-sm font-medium transition-all duration-150 ${
+            activeTab === 'resumes'
+              ? 'border-burgundy text-burgundy font-bold'
+              : 'border-transparent text-muted hover:text-ink hover:border-line'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          My Resumes ({resumes.length})
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('templates')}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 text-sm font-medium transition-all duration-150 ${
+            activeTab === 'templates'
+              ? 'border-burgundy text-burgundy font-bold'
+              : 'border-transparent text-muted hover:text-ink hover:border-line'
+          }`}
+        >
+          <Layout className="w-4 h-4" />
+          PDF Templates ({templates.length})
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('apiKeys')}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 text-sm font-medium transition-all duration-150 ${
+            activeTab === 'apiKeys'
+              ? 'border-burgundy text-burgundy font-bold'
+              : 'border-transparent text-muted hover:text-ink hover:border-line'
+          }`}
+        >
+          <Key className="w-4 h-4" />
+          API Keys & LLMs
+        </button>
+      </div>
 
-        {/* Dynamic Settings Content Card */}
-        <div className="lg:col-span-3 bg-surface border border-line rounded-2xl p-6 md:p-8 shadow-sm">
+      {/* Settings Content Card */}
+      <div className="bg-surface border border-line rounded-2xl p-6 md:p-8 shadow-sm w-full">
           
           {/* 1. Applicant Profile */}
           {activeTab === 'profile' && (
@@ -868,7 +865,6 @@ export default function SettingsScreen() {
             </form>
           )}
 
-        </div>
       </div>
     </div>
   )
