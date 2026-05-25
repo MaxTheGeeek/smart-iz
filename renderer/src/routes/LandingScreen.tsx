@@ -306,7 +306,7 @@ export default function LandingScreen() {
         ) : (
           /* COVER LETTER GENERATOR WORKSPACE */
           <div className="flex-1 flex flex-col justify-center max-w-3xl w-full mx-auto py-8 px-6">
-            <div className="hero text-center mb-6" style={{ padding: 0, justifycontent: 'center' }}>
+            <div className="hero text-center mb-6" style={{ padding: 0, justifyContent: 'center' }}>
               <div className="hero-pre">Writing room for cover letters</div>
               <h1 className="text-3xl font-serif italic text-ink my-3 leading-tight">
                 Tell me about the role.<br />
