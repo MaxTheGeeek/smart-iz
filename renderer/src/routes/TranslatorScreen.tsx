@@ -309,6 +309,15 @@ export default function TranslatorScreen() {
       .replace(/u2069/g, '\u2069')
   }
 
+  const getLanguageLabel = (langCode: string) => {
+    switch (langCode) {
+      case 'fa': return 'Persian (RTL)'
+      case 'ar': return 'Arabic (RTL)'
+      case 'de': return 'German (LTR)'
+      default: return langCode.toUpperCase()
+    }
+  }
+
   // ── 1. Upload & Parsing Workflows ──
   const handleUpload = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -607,54 +616,61 @@ export default function TranslatorScreen() {
           </div>
 
           <div className="space-y-4">
-            <div
-              className={`border border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
-                isDragging ? 'border-burgundy bg-burgundy-soft/20 scale-[1.01]' : 'border-line hover:border-ink-2 bg-surface-2'
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <div className="flex justify-center mb-3 text-muted">
-                <Icon.Translate s={32} />
+            {/* Language Selector FIRST */}
+            <div className="p-4 bg-surface border border-line rounded-xl select-none shadow-sm flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-mono uppercase tracking-wider text-muted font-bold">1. Select Target Language</span>
+                <span className="text-[10px] text-muted opacity-80">Choose target translation before uploading</span>
               </div>
-              <h4 className="font-serif italic text-lg text-ink font-semibold">Drop PDF book here</h4>
-              <span className="suggestion inline-flex items-center gap-1 mt-3 text-xs font-semibold">
-                <Icon.Attach s={11} />
-                <span>Browse computer storage</span>
-              </span>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept=".pdf"
-                onChange={handleFileChange}
-              />
-            </div>
-
-            {/* Language Selector */}
-            <div className="flex items-center justify-between p-4 bg-surface border border-line rounded-xl select-none">
-              <span className="text-xs font-mono uppercase tracking-wider text-muted">Target Translation Language</span>
               <div className="flex gap-2">
                 <button
-                  className={`btn text-xs py-1 px-3 border rounded-lg ${selectedLanguage === 'fa' ? 'bg-burgundy text-white border-burgundy' : 'border-line text-ink hover:bg-surface-2'}`}
+                  className={`btn text-xs py-1.5 px-3 border rounded-lg transition-all duration-150 ${selectedLanguage === 'fa' ? 'bg-burgundy text-white border-burgundy shadow-sm font-bold' : 'border-line text-ink hover:bg-surface-2'}`}
                   onClick={() => setSelectedLanguage('fa')}
                 >
                   Persian (RTL)
                 </button>
                 <button
-                  className={`btn text-xs py-1 px-3 border rounded-lg ${selectedLanguage === 'ar' ? 'bg-burgundy text-white border-burgundy' : 'border-line text-ink hover:bg-surface-2'}`}
+                  className={`btn text-xs py-1.5 px-3 border rounded-lg transition-all duration-150 ${selectedLanguage === 'ar' ? 'bg-burgundy text-white border-burgundy shadow-sm font-bold' : 'border-line text-ink hover:bg-surface-2'}`}
                   onClick={() => setSelectedLanguage('ar')}
                 >
                   Arabic (RTL)
                 </button>
                 <button
-                  className={`btn text-xs py-1 px-3 border rounded-lg ${selectedLanguage === 'de' ? 'bg-burgundy text-white border-burgundy' : 'border-line text-ink hover:bg-surface-2'}`}
+                  className={`btn text-xs py-1.5 px-3 border rounded-lg transition-all duration-150 ${selectedLanguage === 'de' ? 'bg-burgundy text-white border-burgundy shadow-sm font-bold' : 'border-line text-ink hover:bg-surface-2'}`}
                   onClick={() => setSelectedLanguage('de')}
                 >
                   German (LTR)
                 </button>
+              </div>
+            </div>
+
+            {/* Dropzone SECOND */}
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-mono uppercase tracking-wider text-muted font-bold">2. Upload Book PDF</span>
+              <div
+                className={`border border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${
+                  isDragging ? 'border-burgundy bg-burgundy-soft/20 scale-[1.01]' : 'border-line hover:border-ink-2 bg-surface-2'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="flex justify-center mb-3 text-muted">
+                  <Icon.Translate s={32} />
+                </div>
+                <h4 className="font-serif italic text-lg text-ink font-semibold">Drop PDF book here</h4>
+                <span className="suggestion inline-flex items-center gap-1 mt-3 text-xs font-semibold">
+                  <Icon.Attach s={11} />
+                  <span>Browse computer storage</span>
+                </span>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                />
               </div>
             </div>
 
@@ -691,7 +707,7 @@ export default function TranslatorScreen() {
               {fileName} — <em>{activeChapter?.title || 'Chapter Workspace'}</em>
             </h2>
             <div className="meta text-xs text-muted flex items-center gap-2 mt-0.5">
-              <span>Target: <strong>{targetLanguage.toUpperCase()}</strong></span>
+              <span>Target: <strong>{getLanguageLabel(targetLanguage)}</strong></span>
               <span>·</span>
               <span>Chapter {currentChapterIdx + 1} of {chapters.length}</span>
               <span>·</span>
@@ -821,7 +837,7 @@ export default function TranslatorScreen() {
           {/* Text Container (Always Reader Mode) */}
           <div className="flex-1 flex gap-4 overflow-hidden h-full">
             {/* Right Pane: RTL Streamed Translation */}
-            <div className="flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full flex-1 max-w-3xl mx-auto w-full">
+            <div className="flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full flex-1 w-full">
               <div className="p-3 border-b border-line bg-paper-warm flex items-center justify-between text-xs text-muted select-none">
                 <span className="font-mono uppercase tracking-wider font-semibold">LLM Translation</span>
                 <span className="flex items-center gap-1 text-[10px]">
@@ -831,7 +847,7 @@ export default function TranslatorScreen() {
               </div>
               
               <div
-                className="flex-1 p-8 overflow-y-auto text-base leading-loose text-ink bg-surface border-t border-line space-y-4 select-text"
+                className="flex-1 p-6 overflow-y-auto text-[14.5px] leading-relaxed text-ink bg-surface border-t border-line space-y-3.5 select-text"
                 style={{
                   fontFamily: isRtl ? 'Vazirmatn, system-ui, sans-serif' : 'inherit',
                   direction: isRtl ? 'rtl' : 'ltr',
@@ -843,20 +859,20 @@ export default function TranslatorScreen() {
                     if (block.type === 'heading') {
                       if (block.level === 2) {
                         return (
-                          <h2 key={idx} className="font-serif italic text-2xl text-ink font-bold mt-8 mb-4 border-b border-line-soft pb-2 text-right">
+                          <h2 key={idx} className="font-serif italic text-lg text-ink font-bold mt-5 mb-2.5 border-b border-line-soft pb-1 text-right">
                             {renderInlineText(block.text || '')}
                           </h2>
                         );
                       }
                       if (block.level === 3) {
                         return (
-                          <h3 key={idx} className="font-serif text-xl text-ink font-semibold mt-6 mb-3 text-right">
+                          <h3 key={idx} className="font-serif text-base text-ink font-semibold mt-4 mb-2 text-right">
                             {renderInlineText(block.text || '')}
                           </h3>
                         );
                       }
                       return (
-                        <h4 key={idx} className="font-sans text-lg text-ink font-semibold mt-5 mb-2 text-right">
+                        <h4 key={idx} className="font-sans text-sm text-ink font-semibold mt-3 mb-1.5 text-right">
                           {renderInlineText(block.text || '')}
                         </h4>
                       );
@@ -865,9 +881,9 @@ export default function TranslatorScreen() {
                     if (block.type === 'code') {
                       const lines = (block.code || '').split('\n');
                       return (
-                        <div key={idx} className="border border-line rounded-2xl overflow-hidden my-6 bg-[#0D1117] text-slate-100 flex flex-col shadow-md select-text" dir="ltr">
+                        <div key={idx} className="border border-line rounded-2xl overflow-hidden my-4 bg-[#0D1117] text-slate-100 flex flex-col shadow-md select-text" dir="ltr">
                           {/* Header */}
-                          <div className="flex items-center justify-between px-4 py-2.5 bg-[#161B22] border-b border-[#21262D] select-none">
+                          <div className="flex items-center justify-between px-4 py-2 bg-[#161B22] border-b border-[#21262D] select-none">
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
@@ -945,7 +961,7 @@ export default function TranslatorScreen() {
                       }
 
                       return (
-                        <div key={idx} className={`p-5 rounded-2xl ${borderColor} ${bgColor} my-5 flex gap-3 flex-col shadow-sm text-sm`} style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                        <div key={idx} className={`p-4 rounded-xl ${borderColor} ${bgColor} my-4 flex gap-2.5 flex-col shadow-sm text-[13.5px]`} style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
                           {labelText && (
                             <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-muted select-none">
                               <span>{icon}</span>
@@ -962,7 +978,7 @@ export default function TranslatorScreen() {
                     if (block.type === 'list') {
                       if (block.listOrdered) {
                         return (
-                          <ol key={idx} className="list-decimal pl-6 pr-6 my-4 space-y-2 leading-relaxed text-ink select-text text-sm" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                          <ol key={idx} className="list-decimal pl-6 pr-6 my-3 space-y-1.5 leading-relaxed text-ink select-text text-[13.5px]" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
                             {block.listItems?.map((item, iIdx) => (
                               <li key={iIdx} className="relative">
                                 {renderInlineText(item)}
@@ -972,7 +988,7 @@ export default function TranslatorScreen() {
                         );
                       } else {
                         return (
-                          <ul key={idx} className="list-disc pl-6 pr-6 my-4 space-y-2 leading-relaxed text-ink select-text text-sm" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                          <ul key={idx} className="list-disc pl-6 pr-6 my-3 space-y-1.5 leading-relaxed text-ink select-text text-[13.5px]" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
                             {block.listItems?.map((item, iIdx) => (
                               <li key={iIdx} className="relative">
                                 {renderInlineText(item)}
@@ -984,7 +1000,7 @@ export default function TranslatorScreen() {
                     }
 
                     return (
-                      <p key={idx} className="relative leading-loose text-ink mb-4 text-justify select-text" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                      <p key={idx} className="relative leading-relaxed text-ink mb-3 text-justify select-text text-[14.5px]" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
                         {renderInlineText(block.text || '')}
                         {idx === parseMarkdown(getCleanedTranslationText(translatedText)).length - 1 && isTranslating && (
                           <span className="inline-block w-1.5 h-4 bg-burgundy animate-pulse align-middle ml-0.5 mr-0.5" />
