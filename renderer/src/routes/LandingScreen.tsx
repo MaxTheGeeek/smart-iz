@@ -3,7 +3,7 @@ import { useAppStore } from '../store/useAppStore'
 import { Icon } from '../components/SharedUI'
 
 export default function LandingScreen() {
-  const { setScreen, setPositionText, setPositionData, setLanguage, language } = useAppStore()
+  const { setScreen, setPositionText, setPositionData, setLanguage, language, selectedSkill, setSelectedSkill } = useAppStore()
   const [inputText, setInputText] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -106,16 +106,40 @@ export default function LandingScreen() {
   return (
     <div className="convo flex-1 flex flex-col justify-between" style={{ minHeight: 'calc(100vh - 100px)' }}>
       {/* Head */}
-      <div className="convo-head">
-        <h2>A blank <em>page.</em></h2>
-        <div className="meta">
-          <span>Fallback chain: Gemini 2.0 → Llama 3.3 → DeepSeek</span>
+      <div className="convo-head" style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', width: '100%' }}>
+        <div>
+          <h2>A blank <em>page.</em></h2>
+          <div className="meta">
+            <span>Fallback chain: Gemini 2.0 → Llama 3.3 → DeepSeek</span>
+          </div>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <select 
+            value={selectedSkill}
+            onChange={(e) => setSelectedSkill(e.target.value as any)}
+            style={{
+              background: 'var(--surface-2)',
+              border: '1px solid var(--line)',
+              color: 'var(--ink)',
+              fontSize: '11px',
+              fontWeight: 500,
+              padding: '5px 10px',
+              borderRadius: '6px',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="chat">💬 Free Chat Mode</option>
+            <option value="cover_letter">📝 Cover Letter Mode</option>
+            <option value="translate">🌐 Translator Mode</option>
+            <option value="analyze">📂 File Analyzer Mode</option>
+          </select>
         </div>
       </div>
 
       {/* Main hero & text area */}
       <div className="flex-1 flex flex-col justify-center max-w-3xl w-full mx-auto py-8">
-        <div className="hero text-center mb-8" style={{ padding: 0, justifyContent: 'center' }}>
+        <div className="hero text-center mb-6" style={{ padding: 0, justifyContent: 'center' }}>
           <div className="hero-pre">A writing room for cover letters</div>
           <h1 className="text-3xl md:text-4xl font-serif italic text-ink my-3 leading-tight">
             Tell me about the role.<br />
@@ -125,6 +149,97 @@ export default function LandingScreen() {
             Paste a job posting, drop the PDF, or just describe the position. I'll pull what matters, line it up against your resume, and write a letter that doesn't sound like everyone else's.
           </p>
         </div>
+
+        {/* Empty state mode picker */}
+        {inputText === '' && (
+          <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--muted)', fontWeight: 'bold', marginBottom: '10px' }}>
+              What would you like to do?
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setSelectedSkill('chat')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid ' + (selectedSkill === 'chat' ? 'var(--burgundy)' : 'var(--line)'),
+                  background: selectedSkill === 'chat' ? 'var(--burgundy-soft)' : 'var(--surface)',
+                  color: 'var(--ink)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>💬</span>
+                <span>Chat freely</span>
+              </button>
+              <button
+                onClick={() => setSelectedSkill('cover_letter')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid ' + (selectedSkill === 'cover_letter' ? 'var(--burgundy)' : 'var(--line)'),
+                  background: selectedSkill === 'cover_letter' ? 'var(--burgundy-soft)' : 'var(--surface)',
+                  color: 'var(--ink)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>📝</span>
+                <span>Cover letter</span>
+              </button>
+              <button
+                onClick={() => setSelectedSkill('translate')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid ' + (selectedSkill === 'translate' ? 'var(--burgundy)' : 'var(--line)'),
+                  background: selectedSkill === 'translate' ? 'var(--burgundy-soft)' : 'var(--surface)',
+                  color: 'var(--ink)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>🌐</span>
+                <span>Translate</span>
+              </button>
+              <button
+                onClick={() => setSelectedSkill('analyze')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid ' + (selectedSkill === 'analyze' ? 'var(--burgundy)' : 'var(--line)'),
+                  background: selectedSkill === 'analyze' ? 'var(--burgundy-soft)' : 'var(--surface)',
+                  color: 'var(--ink)',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>📂</span>
+                <span>Analyze file</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Input container */}
         <div className="space-y-4">

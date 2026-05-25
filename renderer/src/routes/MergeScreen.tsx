@@ -13,6 +13,7 @@ export default function MergeScreen() {
   const [isDragging, setIsDragging] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -23,6 +24,19 @@ export default function MergeScreen() {
     const sizes = ['Bytes', 'KB', 'MB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+  }
+
+  // Truncate filename in the middle: e.g. "my_extremely_long_resume_file_2026.pdf" -> "my_extreme...2026.pdf"
+  const truncateMiddle = (name: string, maxLen = 38) => {
+    if (name.length <= maxLen) return name
+    const extIdx = name.lastIndexOf('.')
+    const ext = extIdx !== -1 ? name.substring(extIdx) : ''
+    const base = extIdx !== -1 ? name.substring(0, extIdx) : name
+    const charsToShow = maxLen - ext.length - 3
+    if (charsToShow <= 0) return name
+    const frontChars = Math.ceil(charsToShow / 2)
+    const backChars = Math.floor(charsToShow / 2)
+    return base.substring(0, frontChars) + '...' + base.substring(base.length - backChars) + ext
   }
 
   const addFiles = (filesList: FileList) => {
@@ -91,6 +105,15 @@ export default function MergeScreen() {
     setSlots(newSlots)
   }
 
+  const moveSlotElement = (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return
+    const newSlots = [...slots]
+    const [removed] = newSlots.splice(fromIdx, 1)
+    newSlots.splice(toIdx, 0, removed)
+    setSlots(newSlots)
+    setDraggedIdx(toIdx)
+  }
+
   const handleCombine = async () => {
     if (slots.length < 2) {
       setErrorMsg('Please upload at least 2 PDF documents to combine.')
@@ -143,114 +166,141 @@ export default function MergeScreen() {
         </div>
       </div>
 
-      {/* Split Combiner Layout */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 py-6 max-w-4xl w-full mx-auto overflow-y-auto">
-        {/* Left Column: Dropzone and settings */}
-        <div className="lg:col-span-5 space-y-4">
-          <div
-            className={`border border-dashed rounded-2xl p-6 text-center select-none cursor-pointer transition-all duration-300 ${
-              isDragging ? 'border-burgundy bg-burgundy-soft/20 scale-[1.01]' : 'border-line hover:border-ink-2 bg-surface-2'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <div className="flex justify-center mb-3 text-muted">
-              <Icon.Layers s={32} className="text-muted" />
-            </div>
-            <h4 className="font-serif italic text-lg text-ink font-semibold">Drop document sheets</h4>
-            <p className="text-xs text-muted mt-1 leading-relaxed">
-              Drag-and-drop your cover letter, resume PDF, and letters of recommendation here.
-            </p>
-            <span className="suggestion inline-flex items-center gap-1 mt-4 text-xs font-semibold">
-              <Icon.Attach s={11} />
-              <span>Browse file explorer</span>
-            </span>
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept=".pdf"
-              multiple
-              onChange={handleFileChange}
-            />
-          </div>
-
-          <div className="p-4 bg-surface border border-line rounded-xl text-xs text-muted space-y-2 select-none">
-            <h5 className="font-semibold text-ink uppercase tracking-wider font-mono text-[10px]">Combiner Rules</h5>
-            <ul className="list-disc pl-4 space-y-1">
-              <li>Requires exactly 2 to 5 standard PDF documents</li>
-              <li>Compiles sequentially matching the right pane list</li>
-              <li>Retains embedded vector text layers perfectly</li>
-            </ul>
-          </div>
+      {/* Full-width flow layout */}
+      <div className="flex-1 flex flex-col gap-6 py-4 max-w-3xl w-full mx-auto overflow-y-auto">
+        
+        {/* Compact Drop Bar */}
+        <div
+          className={`border border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all duration-200 select-none flex items-center justify-center gap-3 ${
+            isDragging ? 'border-burgundy bg-burgundy-soft/20 scale-[1.01]' : 'border-line hover:border-ink-2 bg-surface-2'
+          }`}
+          style={{ height: '60px' }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Icon.Layers s={18} className="text-muted" />
+          <span className="text-xs text-ink font-medium">
+            {isDragging ? 'Drop your PDF files here...' : 'Drag-and-drop cover letter, resume, or recommendation PDFs or '}
+            <span className="text-burgundy underline hover:text-burgundy-hover font-semibold">Browse computer</span>
+          </span>
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept=".pdf"
+            multiple
+            onChange={handleFileChange}
+          />
         </div>
 
-        {/* Right Column: Reorderable Slot stack */}
-        <div className="lg:col-span-7 flex flex-col justify-between">
-          <div className="space-y-3">
-            <h4 className="text-xs font-mono uppercase tracking-wider text-muted select-none">
-              Assembly pipeline slots ({slots.length}/5)
+        {/* Assembly Pipeline and Reorderable Slots */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between select-none">
+            <h4 className="text-xs font-mono uppercase tracking-wider text-muted">
+              Assembly pipeline slots
             </h4>
-            
-            {slots.length > 0 ? (
-              <div className="space-y-2">
-                {slots.map((slot, idx) => (
-                  <div
-                    key={slot.id}
-                    className="flex items-center justify-between p-3.5 bg-white border border-line rounded-xl shadow-sm relative overflow-hidden"
-                  >
-                    {/* Index tag */}
-                    <span className="absolute left-0 top-0 bottom-0 w-1 bg-burgundy" style={{ opacity: 0.1 * (idx + 1) }} />
+            <span 
+              className="text-xs font-mono font-bold px-2 py-0.5 rounded"
+              style={{
+                background: slots.length === 5 ? 'var(--amber-soft)' : 'var(--surface-2)',
+                color: slots.length === 5 ? 'var(--amber)' : 'var(--muted)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {slots.length}/5 Slots
+            </span>
+          </div>
+          
+          {slots.length > 0 ? (
+            <div className="space-y-2">
+              {slots.map((slot, idx) => (
+                <div
+                  key={slot.id}
+                  draggable
+                  onDragStart={() => setDraggedIdx(idx)}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    if (draggedIdx !== null && draggedIdx !== idx) {
+                      moveSlotElement(draggedIdx, idx)
+                    }
+                  }}
+                  onDragEnd={() => setDraggedIdx(null)}
+                  className={`flex items-center justify-between p-3.5 bg-surface border border-line rounded-xl shadow-sm relative overflow-hidden transition-all duration-150 ${
+                    draggedIdx === idx ? 'opacity-40 border-dashed border-burgundy scale-[0.99]' : 'hover:border-ink-2'
+                  }`}
+                >
+                  {/* Color-coded index accent strip */}
+                  <span className="absolute left-0 top-0 bottom-0 w-1 bg-burgundy" style={{ opacity: 0.15 * (idx + 1) }} />
+                  
+                  <div className="flex items-center gap-3 min-w-0 pl-1">
+                    {/* Drag Handle */}
+                    <span 
+                      className="text-muted cursor-grab active:cursor-grabbing text-sm font-semibold select-none pr-1 hover:text-ink"
+                      style={{ fontFamily: 'monospace' }}
+                      title="Drag to reorder"
+                    >
+                      ⠿
+                    </span>
                     
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="doc-ic flex-shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm text-ink truncate pr-8">{slot.name}</div>
-                        <div className="text-xs text-muted">{slot.size}</div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm text-ink truncate pr-8" title={slot.name}>
+                        {truncateMiddle(slot.name)}
                       </div>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="flex items-center gap-1 flex-shrink-0 select-none">
-                      <button
-                        className="icon-btn w-6 h-6 rounded hover:bg-slate-100 flex items-center justify-center border border-line"
-                        disabled={idx === 0}
-                        onClick={() => moveSlot(idx, 'up')}
-                      >
-                        ▲
-                      </button>
-                      <button
-                        className="icon-btn w-6 h-6 rounded hover:bg-slate-100 flex items-center justify-center border border-line"
-                        disabled={idx === slots.length - 1}
-                        onClick={() => moveSlot(idx, 'down')}
-                      >
-                        ▼
-                      </button>
-                      <button
-                        className="icon-btn w-6 h-6 rounded hover:bg-burgundy-soft/50 text-burgundy flex items-center justify-center border border-line ml-1"
-                        onClick={() => removeSlot(slot.id)}
-                      >
-                        <Icon.Trash s={11} />
-                      </button>
+                      <div className="text-xs text-muted font-mono">{slot.size}</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-12 text-center text-xs text-muted italic bg-surface-2 border border-line-soft rounded-2xl select-none">
-                Slots empty. Drag cover letter PDF over to start.
-              </div>
-            )}
 
-            {errorMsg && (
-              <div className="p-3 bg-burgundy-soft border border-badge-burgundy-border text-burgundy text-xs rounded-xl select-none">
-                {errorMsg}
-              </div>
-            )}
-          </div>
+                  {/* Controls */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0 select-none">
+                    <button
+                      className="icon-btn w-6.5 h-6.5 rounded hover:bg-surface-2 flex items-center justify-center border border-line text-xs font-semibold"
+                      disabled={idx === 0}
+                      onClick={(e) => { e.stopPropagation(); moveSlot(idx, 'up'); }}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      className="icon-btn w-6.5 h-6.5 rounded hover:bg-surface-2 flex items-center justify-center border border-line text-xs font-semibold"
+                      disabled={idx === slots.length - 1}
+                      onClick={(e) => { e.stopPropagation(); moveSlot(idx, 'down'); }}
+                    >
+                      ▼
+                    </button>
+                    <button
+                      className="icon-btn w-6.5 h-6.5 rounded hover:bg-burgundy-soft/50 text-burgundy flex items-center justify-center border border-line ml-1"
+                      onClick={(e) => { e.stopPropagation(); removeSlot(slot.id); }}
+                    >
+                      <Icon.Trash s={11} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 text-center text-xs text-muted italic bg-surface-2 border border-line-soft rounded-2xl select-none">
+              Slots empty. Drag cover letter PDF over to start.
+            </div>
+          )}
+
+          {errorMsg && (
+            <div className="p-3 bg-burgundy-soft border border-badge-burgundy-border text-burgundy text-xs rounded-xl select-none text-center">
+              {errorMsg}
+            </div>
+          )}
         </div>
+
+        {/* Compact Rules Card */}
+        <div className="p-4 bg-surface border border-line rounded-2xl text-xs text-muted space-y-2 select-none">
+          <h5 className="font-semibold text-ink uppercase tracking-wider font-mono text-[10px]">Combiner Rules</h5>
+          <ul className="list-disc pl-4 space-y-1">
+            <li>Requires exactly 2 to 5 standard PDF documents</li>
+            <li>Compiles sequentially matching the assembly pipeline order</li>
+            <li>Retains embedded vector text layers perfectly for premium PDF exports</li>
+          </ul>
+        </div>
+
       </div>
 
       {/* Foot */}

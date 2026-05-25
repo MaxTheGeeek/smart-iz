@@ -298,6 +298,11 @@ export default function TranslatorScreen() {
   const [exportError, setExportError] = useState<string | null>(null)
   const [extractedImagesCount, setExtractedImagesCount] = useState<number>(0)
   
+  const [expandedParts, setExpandedParts] = useState<Record<string, boolean>>({})
+  const [inputPageVal, setInputPageVal] = useState('')
+  const [retryCount, setRetryCount] = useState(0)
+  const [translationError, setTranslationError] = useState<string | null>(null)
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const getCleanedTranslationText = (text: string) => {
@@ -428,12 +433,13 @@ export default function TranslatorScreen() {
   // ── 2. Reading and Translation Workflows ──
   const activeChapter: TranslatorChapter | undefined = chapters[currentChapterIdx]
 
-  // Synchronize cache status and load page content when chapter or page changes
+  // Synchronize cache status and load page content when chapter, page, or retry triggers
   useEffect(() => {
     if (!docId || !activeChapter) return
 
     const loadPage = async () => {
       const absolutePage = activeChapter.page_start + currentPageIdx
+      setTranslationError(null)
       // Clear image count first
       setExtractedImagesCount(0)
 
@@ -497,7 +503,7 @@ export default function TranslatorScreen() {
             // Reload cache indicators
             fetchCacheStatusOnly()
           } else if (data.type === 'error') {
-            setTranslatedText(`[Translation Error]: ${data.message}`)
+            setTranslationError(data.message)
             setIsTranslating(false)
             eventSource.close()
           }
@@ -507,13 +513,68 @@ export default function TranslatorScreen() {
       }
 
       eventSource.onerror = () => {
+        setTranslationError('Connection lost. Please verify the sidecar is active.')
         setIsTranslating(false)
         eventSource.close()
       }
     }
 
     loadPage()
-  }, [docId, currentChapterIdx, currentPageIdx])
+  }, [docId, currentChapterIdx, currentPageIdx, retryCount])
+
+  const absolutePageNum = activeChapter ? activeChapter.page_start + currentPageIdx : 0
+
+  const jumpToAbsolutePage = (absPageZeroIndexed: number) => {
+    if (absPageZeroIndexed < 0 || absPageZeroIndexed >= totalPages) return
+    
+    const chIdx = chapters.findIndex(
+      (ch) => absPageZeroIndexed >= ch.page_start && absPageZeroIndexed <= ch.page_end
+    )
+    if (chIdx !== -1) {
+      setCurrentChapterIdx(chIdx)
+      setCurrentPageIdx(absPageZeroIndexed - chapters[chIdx].page_start)
+    }
+  }
+
+  const handleInputPageKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const val = parseInt(inputPageVal, 10)
+      if (!isNaN(val) && val >= 1 && val <= totalPages) {
+        jumpToAbsolutePage(val - 1)
+      } else {
+        setInputPageVal((absolutePageNum + 1).toString())
+      }
+    }
+  }
+
+  // Update input text field value when absolute page changes
+  useEffect(() => {
+    setInputPageVal((absolutePageNum + 1).toString())
+  }, [absolutePageNum])
+
+  // Global arrow keys keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (docId) {
+        const activeEl = document.activeElement
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.getAttribute('contenteditable') === 'true')) {
+          return
+        }
+
+        if (e.key === 'ArrowLeft') {
+          if (absolutePageNum > 0) {
+            jumpToAbsolutePage(absolutePageNum - 1)
+          }
+        } else if (e.key === 'ArrowRight') {
+          if (absolutePageNum < totalPages - 1) {
+            jumpToAbsolutePage(absolutePageNum + 1)
+          }
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [docId, absolutePageNum, totalPages, chapters])
 
   const fetchCacheStatusOnly = async () => {
     if (!docId || !activeChapter) return
@@ -695,7 +756,67 @@ export default function TranslatorScreen() {
 
   // VIEW C: Reader Split Workspace Workspace
   const totalPagesInChapter = activeChapter?.page_count || 1
-  const absolutePageNum = activeChapter ? activeChapter.page_start + currentPageIdx : 0
+
+  // Dynamic collapsible part groups
+  const getGroupedChapters = () => {
+    const groups: { partTitle: string; chapters: { ch: TranslatorChapter; originalIdx: number }[] }[] = []
+    let currentGroup: { partTitle: string; chapters: { ch: TranslatorChapter; originalIdx: number }[] } | null = null
+
+    chapters.forEach((ch, idx) => {
+      const isPart = ch.title.toLowerCase().startsWith('part') || ch.title.toLowerCase().startsWith('بخش') || ch.title.toLowerCase().startsWith('chapter 0')
+      if (isPart) {
+        currentGroup = { partTitle: ch.title, chapters: [] }
+        groups.push(currentGroup)
+      } else {
+        if (!currentGroup) {
+          currentGroup = { partTitle: 'Chapters', chapters: [] }
+          groups.push(currentGroup)
+        }
+        currentGroup.chapters.push({ ch, originalIdx: idx })
+      }
+    })
+
+    return groups.length > 0 ? groups : [{ partTitle: 'Chapters', chapters: chapters.map((ch, idx) => ({ ch, originalIdx: idx })) }]
+  }
+
+  const togglePart = (title: string) => {
+    setExpandedParts(prev => ({ ...prev, [title]: prev[title] === false ? true : false }))
+  }
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = []
+    const maxButtons = 15
+    
+    if (totalPages <= maxButtons) {
+      for (let i = 0; i < totalPages; i++) pages.push(i)
+    } else {
+      pages.push(0)
+      
+      let start = Math.max(1, absolutePageNum - 5)
+      let end = Math.min(totalPages - 2, absolutePageNum + 5)
+      
+      if (absolutePageNum <= 5) {
+        end = 12
+      } else if (absolutePageNum >= totalPages - 6) {
+        start = totalPages - 13
+      }
+      
+      if (start > 1) {
+        pages.push('...')
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+      
+      if (end < totalPages - 2) {
+        pages.push('...')
+      }
+      
+      pages.push(totalPages - 1)
+    }
+    return pages
+  }
 
   return (
     <div className="convo flex-1 flex flex-col justify-between h-full overflow-hidden">
@@ -742,7 +863,7 @@ export default function TranslatorScreen() {
             </button>
             
             <button
-              className="icon-btn w-7 h-7 flex items-center justify-center rounded border border-line text-muted hover:bg-surface-2"
+              className="icon-btn w-7 h-7 flex items-center justify-center rounded border border-line text-muted hover:bg-slate-100"
               title="Close Workspace"
               onClick={resetTranslator}
             >
@@ -758,27 +879,70 @@ export default function TranslatorScreen() {
         {/* TOC Sidebar Rail */}
         <div className="lg:col-span-3 flex flex-col bg-surface border border-line rounded-2xl overflow-hidden select-none h-full">
           <div className="p-3 border-b border-line bg-paper-warm text-[10px] font-mono uppercase tracking-wider text-muted font-semibold">
-            Extracted Index Rails
+            Chapters
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {chapters.map((ch, idx) => {
-              const isChActive = idx === currentChapterIdx
+          <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            {getGroupedChapters().map((group, gIdx) => {
+              const isExpanded = expandedParts[group.partTitle] !== false // Default to true
               return (
-                <button
-                  key={ch.id}
-                  className={`w-full text-left p-3 rounded-xl text-xs transition-all duration-200 relative ${
-                    isChActive
-                      ? 'bg-gradient-to-r from-[#8B2635] to-[#701E2A] text-white shadow-md border-0 transform scale-[1.02]'
-                      : 'hover:bg-surface-2 text-ink-2 border border-transparent hover:scale-[1.01]'
-                  }`}
-                  onClick={() => setCurrentChapterIdx(idx)}
-                >
-                  <div className={`font-semibold truncate ${isChActive ? 'text-white font-bold' : 'text-ink'}`}>{ch.title}</div>
-                  <div className={`text-[10px] mt-1 flex justify-between ${isChActive ? 'text-paper-warm/80' : 'text-muted'}`}>
-                    <span>pages {ch.page_start + 1}–{ch.page_end + 1}</span>
-                    <span>{ch.page_count} sheets</span>
-                  </div>
-                </button>
+                <div key={`group-${gIdx}`} className="space-y-1">
+                  {/* Group Header */}
+                  {group.partTitle !== 'Chapters' && (
+                    <div 
+                      onClick={() => togglePart(group.partTitle)}
+                      className="flex items-center justify-between p-2 text-[10px] font-bold text-muted uppercase tracking-wider cursor-pointer hover:text-ink transition-colors duration-150"
+                    >
+                      <span>{group.partTitle}</span>
+                      <span>{isExpanded ? '▼' : '►'}</span>
+                    </div>
+                  )}
+                  
+                  {isExpanded && (
+                    <div className="space-y-1 pl-1">
+                      {group.chapters.map(({ ch, originalIdx }) => {
+                        const isChActive = originalIdx === currentChapterIdx
+                        return (
+                          <button
+                            key={ch.id}
+                            className={`w-full text-left p-3 rounded-xl text-xs transition-all duration-200 relative ${
+                              isChActive
+                                ? 'bg-burgundy/10 text-ink border-l-2 border-burgundy shadow-sm'
+                                : 'hover:bg-surface-2 text-ink-2 border-l-2 border-transparent hover:scale-[1.01]'
+                            }`}
+                            onClick={() => setCurrentChapterIdx(originalIdx)}
+                          >
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className={`font-semibold truncate ${isChActive ? 'text-burgundy font-bold' : 'text-ink'}`}>
+                                {ch.title}
+                              </div>
+                              {/* Status checkmarks */}
+                              {isChActive && isTranslating ? (
+                                <div style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: '50%',
+                                  border: '1px solid var(--line)',
+                                  borderTopColor: 'var(--burgundy)',
+                                  animation: 'spin 1s linear infinite'
+                                }} />
+                              ) : (
+                                originalIdx < currentChapterIdx ? (
+                                  <span className="text-forest text-[10px] font-bold">✓</span>
+                                ) : (
+                                  <span className="text-muted text-[10px]">○</span>
+                                )
+                              )}
+                            </div>
+                            <div className={`text-[10px] mt-1 flex justify-between ${isChActive ? 'text-burgundy/80' : 'text-muted'}`}>
+                              <span>pages {ch.page_start + 1}–{ch.page_end + 1}</span>
+                              <span>{ch.page_count} sheets</span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
@@ -787,47 +951,61 @@ export default function TranslatorScreen() {
         {/* Center Split Screen: Streamed translation (Always Reader Mode) */}
         <div className="lg:col-span-9 flex flex-col gap-4 overflow-hidden h-full">
           
-          {/* Top page indicator bar - Premium Pagination Row */}
-          <div className="flex items-center justify-between bg-surface border border-line rounded-2xl px-4 py-2 select-none shadow-sm min-h-[52px]">
+          {/* Top Windowed Pagination Row */}
+          <div className="flex items-center justify-between bg-surface border border-line rounded-2xl px-4 py-2 select-none shadow-sm min-h-[52px] w-full gap-4">
             {/* Left Nav Arrow */}
             <button
               className="icon-btn w-8 h-8 rounded-lg border border-line hover:bg-surface-2 flex items-center justify-center text-xs disabled:opacity-30 disabled:pointer-events-none transition-all duration-150 shadow-sm"
-              disabled={currentPageIdx === 0}
-              onClick={() => setCurrentPageIdx(currentPageIdx - 1)}
+              disabled={absolutePageNum === 0}
+              onClick={() => jumpToAbsolutePage(absolutePageNum - 1)}
               title="Previous Page"
             >
               ◀
             </button>
 
-            {/* Scrollable Page numbers row */}
-            <div className="flex-1 flex items-center justify-center gap-1.5 px-4 overflow-x-auto no-scrollbar max-w-full">
-              {Array.from({ length: totalPagesInChapter }).map((_, pIdx) => {
-                const isCur = pIdx === currentPageIdx
-                const isCached = cacheStatus[pIdx]
+            {/* Page numbers row */}
+            <div className="flex-1 flex items-center justify-center gap-1.5 px-2 overflow-x-auto no-scrollbar max-w-full">
+              {getPageNumbers().map((pVal, pIdx) => {
+                if (pVal === '...') {
+                  return <span key={`dots-${pIdx}`} className="text-muted px-1">...</span>
+                }
+                
+                const pNum = pVal as number
+                const isCur = pNum === absolutePageNum
                 return (
                   <button
-                    key={pIdx}
-                    className={`min-w-[32px] h-8 px-1.5 rounded-lg flex flex-col items-center justify-center text-xs transition-all duration-150 relative ${
+                    key={`page-${pNum}`}
+                    className={`min-w-[32px] h-8 px-1.5 rounded-lg flex items-center justify-center text-xs transition-all duration-150 relative ${
                       isCur
                         ? 'bg-burgundy text-white font-bold shadow-sm'
                         : 'bg-surface-2 hover:bg-surface-3 text-ink-2 hover:text-ink border border-line-soft'
                     }`}
-                    onClick={() => setCurrentPageIdx(pIdx)}
+                    onClick={() => jumpToAbsolutePage(pNum)}
                   >
-                    <span className="font-mono text-[11px] font-bold">{pIdx + 1}</span>
-                    {isCached && (
-                      <span className={`w-1 h-1 rounded-full absolute bottom-1 ${isCur ? 'bg-white' : 'bg-forest'}`} />
-                    )}
+                    <span className="font-mono text-[11px] font-bold">{pNum + 1}</span>
                   </button>
                 )
               })}
             </div>
 
+            {/* Middle Page Input Jump Box */}
+            <div className="flex items-center gap-1.5 select-none flex-shrink-0 text-xs text-muted">
+              <span>Page</span>
+              <input
+                type="text"
+                value={inputPageVal}
+                onChange={(e) => setInputPageVal(e.target.value)}
+                onKeyDown={handleInputPageKeyDown}
+                className="w-12 h-8 text-center bg-surface-2 border border-line rounded-lg text-ink font-mono focus:outline-none focus:border-burgundy font-bold text-xs"
+              />
+              <span>of {totalPages}</span>
+            </div>
+
             {/* Right Nav Arrow */}
             <button
               className="icon-btn w-8 h-8 rounded-lg border border-line hover:bg-surface-2 flex items-center justify-center text-xs disabled:opacity-30 disabled:pointer-events-none transition-all duration-150 shadow-sm"
-              disabled={currentPageIdx === totalPagesInChapter - 1}
-              onClick={() => setCurrentPageIdx(currentPageIdx + 1)}
+              disabled={absolutePageNum === totalPages - 1}
+              onClick={() => jumpToAbsolutePage(absolutePageNum + 1)}
               title="Next Page"
             >
               ▶
@@ -838,8 +1016,45 @@ export default function TranslatorScreen() {
           <div className="flex-1 flex gap-4 overflow-hidden h-full">
             {/* Right Pane: RTL Streamed Translation */}
             <div className="flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full flex-1 w-full">
+              
+              {/* Floating Left Arrow Overlay */}
+              {absolutePageNum > 0 && (
+                <button
+                  onClick={() => jumpToAbsolutePage(absolutePageNum - 1)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full border border-line bg-surface hover:bg-surface-2 flex items-center justify-center shadow-md opacity-30 hover:opacity-100 transition-all duration-200 text-xs text-ink"
+                  title="Previous Page"
+                >
+                  ◀
+                </button>
+              )}
+
+              {/* Floating Right Arrow Overlay */}
+              {absolutePageNum < totalPages - 1 && (
+                <button
+                  onClick={() => jumpToAbsolutePage(absolutePageNum + 1)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full border border-line bg-surface hover:bg-surface-2 flex items-center justify-center shadow-md opacity-30 hover:opacity-100 transition-all duration-200 text-xs text-ink"
+                  title="Next Page"
+                >
+                  ▶
+                </button>
+              )}
+
               <div className="p-3 border-b border-line bg-paper-warm flex items-center justify-between text-xs text-muted select-none">
-                <span className="font-mono uppercase tracking-wider font-semibold">LLM Translation</span>
+                {isTranslating ? (
+                  <span className="font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 text-burgundy">
+                    <div style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      border: '1.5px solid var(--line)',
+                      borderTopColor: 'var(--burgundy)',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    <span>Translating page {absolutePageNum + 1} of {totalPages}…</span>
+                  </span>
+                ) : (
+                  <span className="font-mono uppercase tracking-wider font-semibold">LLM Translation</span>
+                )}
                 <span className="flex items-center gap-1 text-[10px]">
                   <span className="star">✦</span>
                   {isRtl ? 'RTL Vazirmatn font' : 'Standard font'}
@@ -854,7 +1069,29 @@ export default function TranslatorScreen() {
                   textAlign: isRtl ? 'right' : 'left'
                 }}
               >
-                {translatedText ? (
+                {isTranslating && translatedText === '' ? (
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-4 bg-line rounded w-11/12" />
+                    <div className="h-4 bg-line rounded w-10/12" />
+                    <div className="h-4 bg-line rounded w-full" />
+                    <div className="h-4 bg-line rounded w-8/12" />
+                    <div className="h-4 bg-line rounded w-9/12" />
+                  </div>
+                ) : translationError ? (
+                  <div className="p-5 border border-red-200 bg-red-50 text-red-800 rounded-xl text-center select-none flex flex-col gap-3 max-w-md mx-auto my-8 shadow-sm">
+                    <div className="text-sm font-semibold flex items-center justify-center gap-1.5">
+                      <span>⚠️</span>
+                      <span>Translation Failed</span>
+                    </div>
+                    <p className="text-xs opacity-90">{translationError}</p>
+                    <button
+                      onClick={() => setRetryCount((prev) => prev + 1)}
+                      className="btn bg-burgundy hover:bg-burgundy-hover text-white text-xs font-semibold px-4 py-2 rounded-lg self-center shadow-sm"
+                    >
+                      Retry this page
+                    </button>
+                  </div>
+                ) : translatedText ? (
                   parseMarkdown(getCleanedTranslationText(translatedText)).map((block, idx) => {
                     if (block.type === 'heading') {
                       if (block.level === 2) {

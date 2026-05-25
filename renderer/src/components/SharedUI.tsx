@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { useTranslatorStore } from '../store/useTranslatorStore'
 
@@ -170,22 +170,10 @@ export function WindowChrome({ title, right }: WindowChromeProps) {
 // ── Sidebar ──
 export function Sidebar() {
   const { activeScreen, setScreen, resetStore } = useAppStore()
+  const [isToolsExpanded, setIsToolsExpanded] = useState(true)
 
-  const items = [
-    { id: 'landing', ic: <Icon.Chat />, label: 'Writing room' },
-    { id: 'resumes', ic: <Icon.Docs />, label: 'Settings & profiles' },
-    { id: 'translator', ic: <Icon.Translate />, label: 'Translator' },
-    { id: 'merge', ic: <Icon.Merge />, label: 'Merge PDFs' },
-  ]
-
-  const handleItemClick = (id: string) => {
-    if (id === 'landing') {
-      resetStore() // Back to clean landing
-    } else if (id === 'resumes') {
-      setScreen('settings') // maps resumes settings tab
-    } else {
-      setScreen(id as any)
-    }
+  const handleNewChat = () => {
+    resetStore()
   }
 
   // Active mapping helper
@@ -193,7 +181,7 @@ export function Sidebar() {
     if (id === 'landing') {
       return ['landing', 'setup', 'generating', 'review', 'analyzing'].includes(activeScreen)
     }
-    if (id === 'resumes') {
+    if (id === 'settings') {
       return activeScreen === 'settings'
     }
     return activeScreen === id
@@ -201,7 +189,7 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar select-none">
-      <div className="brand cursor-pointer" onClick={() => resetStore()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', borderBottom: '1px dashed var(--line)', paddingBottom: '14px', paddingTop: '4px' }}>
+      <div className="brand cursor-pointer" onClick={handleNewChat} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', borderBottom: '1px dashed var(--line)', paddingBottom: '14px', paddingTop: '4px' }}>
         <img 
           src="logos/lockups/smartiz-lockup.svg" 
           alt="Smartiz" 
@@ -210,27 +198,68 @@ export function Sidebar() {
         <div className="brand-sub" style={{ paddingLeft: '4px', margin: 0, opacity: 0.8 }}>v 1.1.1 · local</div>
       </div>
 
-      <button className="new-btn" onClick={() => resetStore()}>
+      <button className="new-btn" onClick={handleNewChat}>
         <span className="plus">+</span>
-        <span>New cover letter</span>
+        <span>New chat</span>
         <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.6 }} className="kbd">
           ⌘N
         </span>
       </button>
 
+      <div className="sidebar-divider" />
+
+      {/* Main Sections */}
       <div className="nav-section">
-        {items.map((it) => (
-          <div
-            key={it.id}
-            className={`nav-item ${isSelected(it.id) ? 'active' : ''}`}
-            onClick={() => handleItemClick(it.id)}
-          >
-            <span className="ic">{it.ic}</span>
-            <span>{it.label}</span>
-          </div>
-        ))}
+        <div
+          className={`nav-item ${isSelected('landing') ? 'active' : ''}`}
+          onClick={() => setScreen('landing')}
+        >
+          <span className="ic"><Icon.Chat /></span>
+          <span>Writing room</span>
+        </div>
+        <div
+          className={`nav-item ${isSelected('settings') ? 'active' : ''}`}
+          onClick={() => setScreen('settings')}
+        >
+          <span className="ic"><Icon.Docs /></span>
+          <span>Settings & profiles</span>
+        </div>
       </div>
 
+      <div className="sidebar-divider" />
+
+      {/* Tools Collapsible */}
+      <div className="nav-section">
+        <div 
+          className="sidebar-collapsible-label"
+          onClick={() => setIsToolsExpanded(!isToolsExpanded)}
+        >
+          <span>Tools</span>
+          <span style={{ fontSize: '9px', opacity: 0.8, transition: 'transform 0.2s', transform: isToolsExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▼</span>
+        </div>
+        {isToolsExpanded && (
+          <div className="flex flex-col gap-0.5" style={{ paddingLeft: '4px' }}>
+            <div
+              className={`nav-item ${isSelected('translator') ? 'active' : ''}`}
+              onClick={() => setScreen('translator')}
+            >
+              <span className="ic"><Icon.Translate /></span>
+              <span>Translator</span>
+            </div>
+            <div
+              className={`nav-item ${isSelected('merge') ? 'active' : ''}`}
+              onClick={() => setScreen('merge')}
+            >
+              <span className="ic"><Icon.Merge /></span>
+              <span>Merge PDFs</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="sidebar-divider" />
+
+      {/* Recent Section */}
       <div className="nav-section">
         <div className="nav-label">Recent</div>
         <div className="history-list">
@@ -247,13 +276,8 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Footer Profile */}
       <div className="sidebar-foot">
-        <div className={`nav-item ${activeScreen === 'settings' ? 'active' : ''}`} onClick={() => setScreen('settings')}>
-          <span className="ic">
-            <Icon.Settings />
-          </span>
-          <span>Settings</span>
-        </div>
         <div style={{ padding: '8px 9px 0', fontSize: 10.5, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 7 }}>
           <div
             style={{

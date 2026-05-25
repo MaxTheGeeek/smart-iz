@@ -306,6 +306,28 @@ body { margin: 0; font-family: var(--sans); color: var(--ink); }
   margin-top: 3px;
 }
 
+.sidebar-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 2px 4px;
+  opacity: 0.6;
+}
+.sidebar-collapsible-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 8px 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.sidebar-collapsible-label:hover {
+  color: var(--ink-2);
+}
+
 .new-btn {
   display: flex; align-items: center; gap: 8px;
   background: var(--ink); color: var(--paper);

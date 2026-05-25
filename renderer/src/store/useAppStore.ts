@@ -30,9 +30,12 @@ export interface QAResult {
   qa_score: number
 }
 
+export type SkillType = 'chat' | 'cover_letter' | 'translate' | 'analyze'
+
 interface AppState {
   // Navigation & Session
   activeScreen: 'landing' | 'analyzing' | 'setup' | 'generating' | 'review' | 'settings' | 'merge' | 'translator'
+  selectedSkill: SkillType
   
   // Data State
   positionText: string
@@ -52,6 +55,7 @@ interface AppState {
 
   // Actions
   setScreen: (screen: AppState['activeScreen']) => void
+  setSelectedSkill: (skill: SkillType) => void
   setPositionText: (text: string) => void
   setPositionData: (data: PositionParseResult | null) => void
   setLanguage: (lang: 'en' | 'de') => void
@@ -69,6 +73,7 @@ interface AppState {
 
 const initialState = {
   activeScreen: 'landing' as const,
+  selectedSkill: 'chat' as SkillType,
   positionText: '',
   positionData: null,
   language: 'en' as const,
@@ -87,6 +92,7 @@ export const useAppStore = create<AppState>((set) => ({
   ...initialState,
 
   setScreen: (screen) => set({ activeScreen: screen }),
+  setSelectedSkill: (skill) => set({ selectedSkill: skill }),
   setPositionText: (text) => set({ positionText: text }),
   setPositionData: (data) => set({ positionData: data }),
   setLanguage: (lang) => set({ language: lang }),
