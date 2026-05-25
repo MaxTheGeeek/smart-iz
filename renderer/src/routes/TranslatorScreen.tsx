@@ -2,6 +2,265 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useTranslatorStore, TranslatorChapter } from '../store/useTranslatorStore'
 import { Icon, ModelPill } from '../components/SharedUI'
 
+interface MarkdownBlock {
+  type: 'heading' | 'code' | 'blockquote' | 'list' | 'paragraph';
+  level?: number;
+  language?: string;
+  code?: string;
+  blockquoteType?: 'note' | 'tip' | 'warning' | 'caution' | 'general';
+  listOrdered?: boolean;
+  listItems?: string[];
+  text?: string;
+}
+
+const parseMarkdown = (text: string): MarkdownBlock[] => {
+  if (!text) return [];
+  
+  const lines = text.split('\n');
+  const blocks: MarkdownBlock[] = [];
+  let inCodeBlock = false;
+  let codeLanguage = '';
+  let codeBuffer: string[] = [];
+  
+  let inBlockquote = false;
+  let blockquoteBuffer: string[] = [];
+  
+  let inList = false;
+  let listOrdered = false;
+  let listItemsBuffer: string[] = [];
+
+  const flushList = () => {
+    if (inList && listItemsBuffer.length > 0) {
+      blocks.push({
+        type: 'list',
+        listOrdered,
+        listItems: [...listItemsBuffer]
+      });
+      listItemsBuffer = [];
+      inList = false;
+    }
+  };
+
+  const flushBlockquote = () => {
+    if (inBlockquote && blockquoteBuffer.length > 0) {
+      const fullText = blockquoteBuffer.join('\n');
+      let blockquoteType: 'note' | 'tip' | 'warning' | 'caution' | 'general' = 'general';
+      let cleanText = fullText;
+
+      if (fullText.includes('[!NOTE]')) {
+        blockquoteType = 'note';
+        cleanText = fullText.replace(/\[!NOTE\]/gi, '').trim();
+      } else if (fullText.includes('[!TIP]')) {
+        blockquoteType = 'tip';
+        cleanText = fullText.replace(/\[!TIP\]/gi, '').trim();
+      } else if (fullText.includes('[!WARNING]')) {
+        blockquoteType = 'warning';
+        cleanText = fullText.replace(/\[!WARNING\]/gi, '').trim();
+      } else if (fullText.includes('[!CAUTION]')) {
+        blockquoteType = 'caution';
+        cleanText = fullText.replace(/\[!CAUTION\]/gi, '').trim();
+      } else if (/warning|هشدار/i.test(fullText)) {
+        blockquoteType = 'warning';
+      } else if (/tip|نکته/i.test(fullText)) {
+        blockquoteType = 'tip';
+      }
+
+      blocks.push({
+        type: 'blockquote',
+        blockquoteType,
+        text: cleanText
+      });
+      blockquoteBuffer = [];
+      inBlockquote = false;
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // 1. Code Blocks
+    if (trimmed.startsWith('```')) {
+      if (inCodeBlock) {
+        blocks.push({
+          type: 'code',
+          language: codeLanguage || 'code',
+          code: codeBuffer.join('\n')
+        });
+        codeBuffer = [];
+        inCodeBlock = false;
+      } else {
+        flushList();
+        flushBlockquote();
+        inCodeBlock = true;
+        codeLanguage = trimmed.slice(3).trim().toLowerCase();
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeBuffer.push(line);
+      continue;
+    }
+
+    // 2. Blockquotes
+    if (trimmed.startsWith('>')) {
+      flushList();
+      inBlockquote = true;
+      blockquoteBuffer.push(trimmed.slice(1).trim());
+      continue;
+    } else if (inBlockquote && !trimmed.startsWith('>')) {
+      if (trimmed === '') {
+        flushBlockquote();
+      } else {
+        blockquoteBuffer.push(trimmed);
+        continue;
+      }
+    }
+
+    // 3. Headings
+    if (trimmed.startsWith('#')) {
+      flushList();
+      flushBlockquote();
+      const match = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      if (match) {
+        const level = match[1].length;
+        const text = match[2];
+        blocks.push({
+          type: 'heading',
+          level,
+          text
+        });
+        continue;
+      }
+    }
+
+    // 4. Lists
+    const listMatch = trimmed.match(/^([\-\*]|\d+\.)\s+(.*)$/);
+    if (listMatch) {
+      flushBlockquote();
+      const bullet = listMatch[1];
+      const itemText = listMatch[2];
+      const isOrdered = /^\d/.test(bullet);
+
+      if (inList && listOrdered !== isOrdered) {
+        flushList();
+      }
+
+      inList = true;
+      listOrdered = isOrdered;
+      listItemsBuffer.push(itemText);
+      continue;
+    } else if (inList && trimmed !== '' && !trimmed.match(/^([\-\*]|\d+\.)\s+/)) {
+      if (listItemsBuffer.length > 0) {
+        listItemsBuffer[listItemsBuffer.length - 1] += ' ' + trimmed;
+      }
+      continue;
+    } else if (inList && trimmed === '') {
+      flushList();
+      continue;
+    }
+
+    // 5. Standard Paragraphs
+    if (trimmed !== '') {
+      flushList();
+      flushBlockquote();
+      blocks.push({
+        type: 'paragraph',
+        text: trimmed
+      });
+    }
+  }
+
+  flushList();
+  flushBlockquote();
+
+  return blocks;
+};
+
+const renderInlineText = (text: string) => {
+  if (!text) return null;
+  
+  // Parse inline bidirectional isolates, code highlights, and bold items
+  const tokens: { type: 'text' | 'code' | 'bold' | 'bidi'; content: string }[] = [];
+  const parts = text.split(/([\u2066\u2069]|\\u2066|\\u2069)/);
+  let isBidi = false;
+  let processedParts: typeof tokens = [];
+  
+  for (const part of parts) {
+    if (part === '\u2066' || part === '\\u2066') {
+      isBidi = true;
+      continue;
+    }
+    if (part === '\u2069' || part === '\\u2069') {
+      isBidi = false;
+      continue;
+    }
+    
+    if (isBidi) {
+      processedParts.push({ type: 'bidi', content: part });
+    } else {
+      processedParts.push({ type: 'text', content: part });
+    }
+  }
+  
+  const finalTokens: typeof tokens = [];
+  for (const token of processedParts) {
+    if (token.type === 'bidi') {
+      finalTokens.push(token);
+      continue;
+    }
+    
+    const codeParts = token.content.split('`');
+    let isCode = false;
+    
+    for (const codePart of codeParts) {
+      if (isCode) {
+        finalTokens.push({ type: 'code', content: codePart });
+      } else {
+        const boldParts = codePart.split('**');
+        let isBold = false;
+        for (const boldPart of boldParts) {
+          if (isBold) {
+            finalTokens.push({ type: 'bold', content: boldPart });
+          } else {
+            if (boldPart) {
+              finalTokens.push({ type: 'text', content: boldPart });
+            }
+          }
+          isBold = !isBold;
+        }
+      }
+      isCode = !isCode;
+    }
+  }
+  
+  return (
+    <>
+      {finalTokens.map((tok, i) => {
+        if (tok.type === 'bidi') {
+          return (
+            <span key={i} className="inline-block font-mono text-[12px] bg-[#8B2635]/5 border border-[#8B2635]/20 px-1.5 py-0.5 rounded text-[#8B2635] font-semibold select-all mx-0.5 align-middle" dir="ltr">
+              {tok.content}
+            </span>
+          );
+        }
+        if (tok.type === 'code') {
+          return (
+            <code key={i} className="font-mono text-[12px] bg-surface-2 border border-line px-1.5 py-0.5 rounded text-burgundy font-semibold select-all mx-0.5 align-middle" dir="ltr">
+              {tok.content}
+            </code>
+          );
+        }
+        if (tok.type === 'bold') {
+          return <strong key={i} className="font-bold text-ink">{tok.content}</strong>;
+        }
+        return <span key={i}>{tok.content}</span>;
+      })}
+    </>
+  );
+};
+
 export default function TranslatorScreen() {
   const {
     docId,
@@ -37,7 +296,7 @@ export default function TranslatorScreen() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  const [readerMode, setReaderMode] = useState(true)
+  const [extractedImagesCount, setExtractedImagesCount] = useState<number>(0)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -166,7 +425,20 @@ export default function TranslatorScreen() {
 
     const loadPage = async () => {
       const absolutePage = activeChapter.page_start + currentPageIdx
-      
+      // Clear image count first
+      setExtractedImagesCount(0)
+
+      // Fetch images count
+      try {
+        const imgRes = await fetch(`http://127.0.0.1:8765/api/translator/${docId}/page/${absolutePage}/images`)
+        if (imgRes.ok) {
+          const imgData = await imgRes.json()
+          setExtractedImagesCount(imgData.image_count)
+        }
+      } catch (e) {
+        console.error('Failed to fetch page images count:', e)
+      }
+
       // A. Fetch cache status for chapter pages
       try {
         const cacheRes = await fetch(`http://127.0.0.1:8765/api/translator/${docId}/chapters/${currentChapterIdx}/cache-status`)
@@ -478,15 +750,15 @@ export default function TranslatorScreen() {
               return (
                 <button
                   key={ch.id}
-                  className={`w-full text-left p-2.5 rounded-xl text-xs transition-all duration-150 ${
+                  className={`w-full text-left p-3 rounded-xl text-xs transition-all duration-200 relative ${
                     isChActive
-                      ? 'bg-burgundy-soft/20 text-burgundy border border-badge-burgundy-border'
-                      : 'hover:bg-surface-2 text-ink-2 border border-transparent'
+                      ? 'bg-gradient-to-r from-[#8B2635] to-[#701E2A] text-white shadow-md border-0 transform scale-[1.02]'
+                      : 'hover:bg-surface-2 text-ink-2 border border-transparent hover:scale-[1.01]'
                   }`}
                   onClick={() => setCurrentChapterIdx(idx)}
                 >
-                  <div className="font-semibold truncate text-ink">{ch.title}</div>
-                  <div className="text-[10px] text-muted mt-0.5 flex justify-between">
+                  <div className={`font-semibold truncate ${isChActive ? 'text-white font-bold' : 'text-ink'}`}>{ch.title}</div>
+                  <div className={`text-[10px] mt-1 flex justify-between ${isChActive ? 'text-paper-warm/80' : 'text-muted'}`}>
                     <span>pages {ch.page_start + 1}–{ch.page_end + 1}</span>
                     <span>{ch.page_count} sheets</span>
                   </div>
@@ -496,104 +768,60 @@ export default function TranslatorScreen() {
           </div>
         </div>
 
-        {/* Center Split Screen: Original + Streamed translation */}
+        {/* Center Split Screen: Streamed translation (Always Reader Mode) */}
         <div className="lg:col-span-9 flex flex-col gap-4 overflow-hidden h-full">
           
-          {/* Top page indicator bar */}
-          <div className="flex items-center justify-between bg-surface border border-line rounded-xl px-4 py-2 select-none">
-            {/* Nav Arrows */}
-            <div className="flex items-center gap-2">
-              <button
-                className="icon-btn w-6 h-6 rounded border border-line hover:bg-surface-2 flex items-center justify-center text-xs"
-                disabled={currentPageIdx === 0}
-                onClick={() => setCurrentPageIdx(currentPageIdx - 1)}
-              >
-                ◀
-              </button>
-              <span className="text-xs text-ink font-semibold">
-                Sheet {currentPageIdx + 1} / {totalPagesInChapter}
-              </span>
-              <button
-                className="icon-btn w-6 h-6 rounded border border-line hover:bg-surface-2 flex items-center justify-center text-xs"
-                disabled={currentPageIdx === totalPagesInChapter - 1}
-                onClick={() => setCurrentPageIdx(currentPageIdx + 1)}
-              >
-                ▶
-              </button>
+          {/* Top page indicator bar - Premium Pagination Row */}
+          <div className="flex items-center justify-between bg-surface border border-line rounded-2xl px-4 py-2 select-none shadow-sm min-h-[52px]">
+            {/* Left Nav Arrow */}
+            <button
+              className="icon-btn w-8 h-8 rounded-lg border border-line hover:bg-surface-2 flex items-center justify-center text-xs disabled:opacity-30 disabled:pointer-events-none transition-all duration-150 shadow-sm"
+              disabled={currentPageIdx === 0}
+              onClick={() => setCurrentPageIdx(currentPageIdx - 1)}
+              title="Previous Page"
+            >
+              ◀
+            </button>
+
+            {/* Scrollable Page numbers row */}
+            <div className="flex-1 flex items-center justify-center gap-1.5 px-4 overflow-x-auto no-scrollbar max-w-full">
+              {Array.from({ length: totalPagesInChapter }).map((_, pIdx) => {
+                const isCur = pIdx === currentPageIdx
+                const isCached = cacheStatus[pIdx]
+                return (
+                  <button
+                    key={pIdx}
+                    className={`min-w-[32px] h-8 px-1.5 rounded-lg flex flex-col items-center justify-center text-xs transition-all duration-150 relative ${
+                      isCur
+                        ? 'bg-burgundy text-white font-bold shadow-sm'
+                        : 'bg-surface-2 hover:bg-surface-3 text-ink-2 hover:text-ink border border-line-soft'
+                    }`}
+                    onClick={() => setCurrentPageIdx(pIdx)}
+                  >
+                    <span className="font-mono text-[11px] font-bold">{pIdx + 1}</span>
+                    {isCached && (
+                      <span className={`w-1 h-1 rounded-full absolute bottom-1 ${isCur ? 'bg-white' : 'bg-forest'}`} />
+                    )}
+                  </button>
+                )
+              })}
             </div>
 
-            {/* View Mode Segmented Toggle Control */}
-            <div className="flex items-center gap-1 bg-surface-2 p-0.5 rounded-lg border border-line text-[10px]">
-              <button
-                className={`uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md transition-all duration-150 ${
-                  readerMode 
-                    ? 'bg-burgundy text-white shadow-sm' 
-                    : 'text-muted hover:text-ink'
-                }`}
-                onClick={() => setReaderMode(true)}
-              >
-                📖 Reader Mode
-              </button>
-              <button
-                className={`uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-md transition-all duration-150 ${
-                  !readerMode 
-                    ? 'bg-burgundy text-white shadow-sm' 
-                    : 'text-muted hover:text-ink'
-                }`}
-                onClick={() => setReaderMode(false)}
-              >
-                🪟 Split View
-              </button>
-            </div>
-
-            {/* Page Cache Hits Tracker Dots */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-mono text-muted uppercase tracking-wider mr-1">Chapter Cache Hits:</span>
-              <div className="flex gap-1">
-                {Array.from({ length: totalPagesInChapter }).map((_, pIdx) => {
-                  const isCached = cacheStatus[pIdx]
-                  const isCur = pIdx === currentPageIdx
-                  return (
-                    <span
-                      key={pIdx}
-                      className={`w-2 h-2 rounded-full border transition-all duration-150 ${
-                        isCur
-                          ? 'border-burgundy scale-110'
-                          : 'border-transparent'
-                      }`}
-                      style={{
-                        background: isCached ? 'var(--forest)' : 'var(--line-soft)'
-                      }}
-                      title={`Page ${pIdx + 1} status`}
-                    />
-                  )
-                })}
-              </div>
-            </div>
+            {/* Right Nav Arrow */}
+            <button
+              className="icon-btn w-8 h-8 rounded-lg border border-line hover:bg-surface-2 flex items-center justify-center text-xs disabled:opacity-30 disabled:pointer-events-none transition-all duration-150 shadow-sm"
+              disabled={currentPageIdx === totalPagesInChapter - 1}
+              onClick={() => setCurrentPageIdx(currentPageIdx + 1)}
+              title="Next Page"
+            >
+              ▶
+            </button>
           </div>
 
-          {/* Split Text Container */}
+          {/* Text Container (Always Reader Mode) */}
           <div className="flex-1 flex gap-4 overflow-hidden h-full">
-            {/* Left Pane: Original Text (Hidden in Reader Mode) */}
-            {!readerMode && (
-              <div className="flex-1 flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full">
-                <div className="p-3 border-b border-line bg-paper-warm flex items-center justify-between text-xs text-muted select-none">
-                  <span className="font-mono uppercase tracking-wider font-semibold">Original PDF Plaintext</span>
-                  <span>Latin glyphs</span>
-                </div>
-                <div
-                  className="flex-1 p-5 overflow-y-auto text-xs leading-relaxed text-ink bg-surface border-t border-line whitespace-pre-wrap select-text"
-                  style={{ fontFamily: 'monospace' }}
-                >
-                  {originalText || (
-                    <span className="text-muted italic">Reading document characters...</span>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Right Pane: RTL Streamed Translation */}
-            <div className={`flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full ${readerMode ? 'flex-1 max-w-3xl mx-auto w-full' : 'flex-1'}`}>
+            <div className="flex flex-col bg-surface border border-line rounded-2xl overflow-hidden relative shadow-sm h-full flex-1 max-w-3xl mx-auto w-full">
               <div className="p-3 border-b border-line bg-paper-warm flex items-center justify-between text-xs text-muted select-none">
                 <span className="font-mono uppercase tracking-wider font-semibold">LLM Translation</span>
                 <span className="flex items-center gap-1 text-[10px]">
@@ -611,20 +839,189 @@ export default function TranslatorScreen() {
                 }}
               >
                 {translatedText ? (
-                  getCleanedTranslationText(translatedText).split('\n\n').map((p, idx) => (
-                    <p key={idx} className="relative">
-                      {p}
-                      {idx === translatedText.split('\n\n').length - 1 && isTranslating && (
-                        <span className="inline-block w-1.5 h-4 bg-burgundy animate-pulse align-middle ml-0.5 mr-0.5" />
-                      )}
-                    </p>
-                  ))
+                  parseMarkdown(getCleanedTranslationText(translatedText)).map((block, idx) => {
+                    if (block.type === 'heading') {
+                      if (block.level === 2) {
+                        return (
+                          <h2 key={idx} className="font-serif italic text-2xl text-ink font-bold mt-8 mb-4 border-b border-line-soft pb-2 text-right">
+                            {renderInlineText(block.text || '')}
+                          </h2>
+                        );
+                      }
+                      if (block.level === 3) {
+                        return (
+                          <h3 key={idx} className="font-serif text-xl text-ink font-semibold mt-6 mb-3 text-right">
+                            {renderInlineText(block.text || '')}
+                          </h3>
+                        );
+                      }
+                      return (
+                        <h4 key={idx} className="font-sans text-lg text-ink font-semibold mt-5 mb-2 text-right">
+                          {renderInlineText(block.text || '')}
+                        </h4>
+                      );
+                    }
+
+                    if (block.type === 'code') {
+                      const lines = (block.code || '').split('\n');
+                      return (
+                        <div key={idx} className="border border-line rounded-2xl overflow-hidden my-6 bg-[#0D1117] text-slate-100 flex flex-col shadow-md select-text" dir="ltr">
+                          {/* Header */}
+                          <div className="flex items-center justify-between px-4 py-2.5 bg-[#161B22] border-b border-[#21262D] select-none">
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F]" />
+                              </div>
+                              <span className="text-[10px] font-mono tracking-wider text-slate-400 uppercase font-bold">
+                                {block.language || 'code'}
+                              </span>
+                            </div>
+                            
+                            <button
+                              className="text-[10px] font-mono text-slate-400 hover:text-white transition-colors duration-150 flex items-center gap-1 bg-slate-800/40 hover:bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/50"
+                              onClick={(e) => {
+                                navigator.clipboard.writeText(block.code || '');
+                                const btn = e.currentTarget;
+                                const span = btn.querySelector('span');
+                                if (span) {
+                                  span.textContent = 'Copied!';
+                                  setTimeout(() => { span.textContent = 'Copy'; }, 2000);
+                                }
+                              }}
+                            >
+                              📋 <span>Copy</span>
+                            </button>
+                          </div>
+                          
+                          {/* Code Area */}
+                          <div className="flex overflow-x-auto p-4 text-[13px] leading-relaxed font-mono bg-[#0D1117] text-left">
+                            {/* Line Numbers */}
+                            <div className="flex flex-col text-slate-600 text-right pr-4 border-r border-[#21262D] select-none text-[12px] min-w-[24px]">
+                              {lines.map((_, iIdx) => (
+                                <span key={iIdx}>{iIdx + 1}</span>
+                              ))}
+                            </div>
+                            {/* Code content */}
+                            <pre className="pl-4 flex-1 select-text overflow-visible whitespace-pre text-emerald-400 font-mono">
+                              <code>{block.code}</code>
+                            </pre>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (block.type === 'blockquote') {
+                      const isWarning = block.blockquoteType === 'warning' || block.blockquoteType === 'caution';
+                      const isTip = block.blockquoteType === 'tip';
+                      const isNote = block.blockquoteType === 'note';
+                      
+                      let borderColor = isRtl ? 'border-r-4 border-[#8B2635]' : 'border-l-4 border-[#8B2635]';
+                      let bgColor = 'bg-surface-2';
+                      let labelText = 'Quote';
+                      let icon = '✦';
+                      
+                      if (isWarning) {
+                        borderColor = isRtl ? 'border-r-4 border-[#8B2635]' : 'border-l-4 border-[#8B2635]';
+                        bgColor = 'bg-burgundy-soft/10';
+                        labelText = isRtl ? 'هشدار / توجه' : 'Warning';
+                        icon = '⚠️';
+                      } else if (isTip) {
+                        borderColor = isRtl ? 'border-r-4 border-forest' : 'border-l-4 border-forest';
+                        bgColor = 'bg-forest-soft/15';
+                        labelText = isRtl ? 'نکته کاربردی' : 'Tip';
+                        icon = '💡';
+                      } else if (isNote) {
+                        borderColor = isRtl ? 'border-r-4 border-[#1E40AF]' : 'border-l-4 border-[#1E40AF]';
+                        bgColor = 'bg-[#EFF6FF]/20';
+                        labelText = isRtl ? 'یادداشت' : 'Note';
+                        icon = 'ℹ️';
+                      } else {
+                        borderColor = isRtl ? 'border-r-4 border-line' : 'border-l-4 border-line';
+                        bgColor = 'bg-surface-2';
+                        labelText = '';
+                        icon = '❝';
+                      }
+
+                      return (
+                        <div key={idx} className={`p-5 rounded-2xl ${borderColor} ${bgColor} my-5 flex gap-3 flex-col shadow-sm text-sm`} style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                          {labelText && (
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-muted select-none">
+                              <span>{icon}</span>
+                              <span>{labelText}</span>
+                            </div>
+                          )}
+                          <div className="leading-relaxed select-text italic text-ink-2">
+                            {renderInlineText(block.text || '')}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (block.type === 'list') {
+                      if (block.listOrdered) {
+                        return (
+                          <ol key={idx} className="list-decimal pl-6 pr-6 my-4 space-y-2 leading-relaxed text-ink select-text text-sm" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                            {block.listItems?.map((item, iIdx) => (
+                              <li key={iIdx} className="relative">
+                                {renderInlineText(item)}
+                              </li>
+                            ))}
+                          </ol>
+                        );
+                      } else {
+                        return (
+                          <ul key={idx} className="list-disc pl-6 pr-6 my-4 space-y-2 leading-relaxed text-ink select-text text-sm" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                            {block.listItems?.map((item, iIdx) => (
+                              <li key={iIdx} className="relative">
+                                {renderInlineText(item)}
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      }
+                    }
+
+                    return (
+                      <p key={idx} className="relative leading-loose text-ink mb-4 text-justify select-text" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
+                        {renderInlineText(block.text || '')}
+                        {idx === parseMarkdown(getCleanedTranslationText(translatedText)).length - 1 && isTranslating && (
+                          <span className="inline-block w-1.5 h-4 bg-burgundy animate-pulse align-middle ml-0.5 mr-0.5" />
+                        )}
+                      </p>
+                    );
+                  })
                 ) : (
                   <span className="text-muted italic font-sans text-xs">
                     {isTranslating ? 'Streaming literary translation...' : 'Waiting for translation trigger...'}
                   </span>
                 )}
               </div>
+
+              {/* Sketches and visual illustrations panel */}
+              {extractedImagesCount > 0 && (
+                <div className="p-5 border-t border-line bg-paper-warm rounded-b-2xl select-none">
+                  <div className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-muted font-bold mb-3">
+                    <span>🖼️</span>
+                    <span>Extracted Page Sketches &amp; Illustrations ({extractedImagesCount})</span>
+                  </div>
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    {Array.from({ length: extractedImagesCount }).map((_, imgIdx) => (
+                      <div key={imgIdx} className="border border-line rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all duration-200 p-2 max-w-[280px]">
+                        <img
+                          src={`http://127.0.0.1:8765/api/translator/${docId}/page/${absolutePageNum}/image/${imgIdx}`}
+                          alt={`Extracted page illustration ${imgIdx + 1}`}
+                          className="w-full h-auto object-contain max-h-[220px] rounded-lg bg-surface-2 filter grayscale hover:grayscale-0 transition-all duration-300"
+                        />
+                        <div className="text-[10px] text-center text-muted mt-2 font-mono">
+                          Figure Asset #{imgIdx + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

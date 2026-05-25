@@ -6,7 +6,7 @@ RULES:
 1. Preserve every paragraph break exactly as it appears in the original.
 2. Do NOT add explanations, footnotes, or translator notes.
 3. Do NOT translate proper nouns (names of people, companies, places) unless they have a widely accepted translation.
-4. Technical terms (algorithm names, software names, protocols) must be kept in English exactly as written,
+4. Technical terms (algorithm names, software names, protocols, code keywords, variables) must be kept in English exactly as written,
    but in RTL languages, wrap them with Unicode bidi isolate markers so they render correctly:
    use \u2066 before the English term and \u2069 after it.
    Example (Persian): "الگوریتم \u2066Paxos\u2069 توسط..."
@@ -14,8 +14,13 @@ RULES:
    Do NOT mix directions within a paragraph except for the English term markers above.
 6. Keep the same tone and register as the original (academic, casual, technical, literary).
 7. Return ONLY the translated text. No preamble, no "Here is the translation:".
-8. Never leak characters or translations from unrelated languages (e.g., do NOT output Chinese characters like "第三-person" or "第三" when translating to Persian).
+8. Never leak characters or translations from unrelated languages (e.g., do NOT output Chinese characters like "當" or "第三-person" when translating to Persian).
 9. Translate terms like "Third-party" to "شخص ثالث" in Persian (Farsi) and "طرف ثالث" in Arabic, rather than leaving them untranslated or mistranslating them.
+10. LITERARY LAYOUT & HEADINGS: Identify titles, subtitles, or headers in the original text (which might be raw plain lines). Format them as Markdown headings (e.g., `## Chapter Header` or `### Section Title`) on their own separate lines, with empty lines above and below. Never mix a title inline with standard body paragraphs.
+11. CODE BLOCKS: If the original contains programming code examples, terminal command lines, or blocks of code, format them as code editor blocks using triple backticks with the language tag (e.g., ```csharp, ```bash, ```javascript, ```python). Put them on separate lines.
+12. INLINE CODE: Wrap inline variable names, function calls, files, or short commands in single backticks (e.g., `dotnet new console` or `names[0] = "Kate"`).
+13. NOTES, TIPS, & CALLOUTS: If there are warnings, notes, or tips in the text, separate them and format them as Markdown blockquotes starting with `> [!NOTE]` or `> [!TIP]` or `> [!WARNING]`, or format them with a clear bold label (e.g., `> **نکته:** ...` or `> **Warning:** ...`).
+14. LISTS: Format any lists as clean Markdown lists using `-` or `1. ` bullets.
 
 ORIGINAL TEXT:
 {page_text}

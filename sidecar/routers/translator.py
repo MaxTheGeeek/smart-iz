@@ -280,6 +280,80 @@ async def stream_translation_endpoint(
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
 
+@router.get("/{doc_id}/page/{absolute_page}/images")
+async def get_page_images(
+    doc_id: str,
+    absolute_page: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Checks if the original PDF page contains images/sketches, extracts them,
+    and returns metadata listing the image indexes available to render.
+    """
+    doc = await db.get(TranslatorDocument, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    doc_dir = TRANSLATOR_DIR / doc_id
+    page_img_dir = doc_dir / f"page_{absolute_page}_images"
+    
+    if page_img_dir.exists():
+        images = sorted(list(page_img_dir.glob("image_*.png")))
+        return {"image_count": len(images)}
+
+    page_img_dir.mkdir(parents=True, exist_ok=True)
+    image_count = 0
+
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(doc.file_path)
+        if absolute_page < 0 or absolute_page >= len(reader.pages):
+            raise HTTPException(status_code=400, detail="Page index out of bounds.")
+        
+        page = reader.pages[absolute_page]
+        
+        for idx, img_obj in enumerate(page.images):
+            # Save the image raw bytes natively to disk as PNG
+            out_path = page_img_dir / f"image_{idx}.png"
+            with open(out_path, "wb") as f:
+                f.write(img_obj.data)
+            image_count += 1
+    except Exception as e:
+        print(f"[warning] Native image extraction failed: {e}")
+        # Clean up empty folder
+        if page_img_dir.exists() and not list(page_img_dir.glob("*.png")):
+            try:
+                page_img_dir.rmdir()
+            except Exception:
+                pass
+        return {"image_count": 0}
+
+    return {"image_count": image_count}
+
+
+@router.get("/{doc_id}/page/{absolute_page}/image/{img_idx}")
+async def get_page_image_file(
+    doc_id: str,
+    absolute_page: int,
+    img_idx: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Serves the extracted page image/sketch file.
+    """
+    doc = await db.get(TranslatorDocument, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    doc_dir = TRANSLATOR_DIR / doc_id
+    img_path = doc_dir / f"page_{absolute_page}_images" / f"image_{img_idx}.png"
+    
+    if not img_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found.")
+
+    return FileResponse(str(img_path), media_type="image/png")
+
+
 @router.post("/{doc_id}/export/chapter/{ch_idx}")
 async def export_chapter_endpoint(
     doc_id: str,

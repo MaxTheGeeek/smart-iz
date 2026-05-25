@@ -19,7 +19,8 @@
       "output": "dist/installers"
     },
     "files": [
-      "dist/**/*",
+      "dist/electron/**/*",
+      "dist/renderer/**/*",
       "package.json"
     ],
     "extraResources": [
@@ -29,7 +30,10 @@
       }
     ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "build/icon.png"
     },
     "win": {
