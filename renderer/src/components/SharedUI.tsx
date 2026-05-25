@@ -133,6 +133,27 @@ export const Icon = {
   ),
 }
 
+export function LogoMark({ size = 26 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 26 26"
+      fill="none"
+      aria-label="Smartiz"
+      role="img"
+    >
+      <rect width="26" height="26" rx="6" fill="#6B1F1F" />
+      <path
+        d="M17 9.5C17 9.5 15.5 8 13 8C10.5 8 9 9.5 9 11C9 12.5 10 13.2 13 14C16 14.8 17 15.5 17 17C17 18.5 15.5 19 13 19C10.5 19 9 17.5 9 17.5"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 // ── Window chrome ──
 interface WindowChromeProps {
   title?: React.ReactNode
@@ -189,13 +210,14 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar select-none">
-      <div className="brand cursor-pointer" onClick={handleNewChat} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', borderBottom: '1px dashed var(--line)', paddingBottom: '14px', paddingTop: '4px' }}>
-        <img 
-          src="logos/lockups/smartiz-lockup.svg" 
-          alt="Smartiz" 
-          style={{ height: '34px', width: 'auto', display: 'block' }} 
-        />
-        <div className="brand-sub" style={{ paddingLeft: '4px', margin: 0, opacity: 0.8 }}>v 1.1.1 · local</div>
+      <div className="brand cursor-pointer" onClick={handleNewChat} style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px dashed var(--line)', paddingBottom: '14px', paddingTop: '4px', width: '100%' }}>
+        <LogoMark size={28} />
+        <div>
+          <div className="brand-name" style={{ fontSize: '16px', fontWeight: 'bold', fontFamily: 'var(--serif)', fontStyle: 'italic', display: 'flex', alignItems: 'center' }}>
+            Smartiz
+          </div>
+          <div className="brand-sub" style={{ fontSize: '10px', opacity: 0.7, margin: 0 }}>v1.1.2 · local</div>
+        </div>
       </div>
 
       <button className="new-btn" onClick={handleNewChat}>
@@ -319,4 +341,40 @@ export function ModelPill({ name, latency, switching }: ModelPillProps) {
       {latency && <span className="latency">· {latency}</span>}
     </span>
   )
+}
+
+interface SidebarToggleRailProps {
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+export function SidebarToggleRail({ isOpen, onToggle }: SidebarToggleRailProps) {
+  return (
+    <div
+      className="sidebar-toggle-rail select-none"
+      onClick={onToggle}
+      title={isOpen ? 'Hide sidebar (⌘\\)' : 'Show sidebar (⌘\\)'}
+      role="button"
+      aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        style={{
+          transition: 'transform 0.2s ease',
+          transform: isOpen ? 'rotate(0deg)' : 'rotate(180deg)'
+        }}
+      >
+        <path
+          d="M9 2L4 7L9 12"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
 }

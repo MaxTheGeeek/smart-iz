@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { useAppStore } from './store/useAppStore'
-import { WindowChrome, Sidebar } from './components/SharedUI'
+import { WindowChrome, Sidebar, SidebarToggleRail } from './components/SharedUI'
 
 // Import Screens
 import LandingScreen from './routes/LandingScreen'
@@ -19,6 +19,8 @@ export default function App() {
     setSidecarHealthy,
     checkingHealth,
     setCheckingHealth,
+    sidebarOpen,
+    setSidebarOpen,
   } = useAppStore()
 
   // Poll sidecar health on mount
@@ -71,6 +73,18 @@ export default function App() {
       active = false
     }
   }, [setSidecarHealthy, setCheckingHealth])
+
+  // Listen for ⌘\ or Ctrl+\ shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault()
+        setSidebarOpen(!sidebarOpen)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [sidebarOpen, setSidebarOpen])
 
   const renderActiveScreen = () => {
     switch (activeScreen) {
@@ -127,8 +141,9 @@ export default function App() {
   return (
     <div className="window select-none">
       <WindowChrome />
-      <div className="shell">
+      <div className={`shell ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}>
         <Sidebar />
+        <SidebarToggleRail isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
         {renderActiveScreen()}
       </div>
     </div>

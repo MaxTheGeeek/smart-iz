@@ -818,21 +818,33 @@ export default function TranslatorScreen() {
     return pages
   }
 
+  const truncateMiddle = (str: string | null, maxLength = 32) => {
+    if (!str) return ''
+    if (str.length <= maxLength) return str
+    const half = Math.floor((maxLength - 3) / 2)
+    return str.substring(0, half) + '...' + str.substring(str.length - half)
+  }
+
   return (
     <div className="convo flex-1 flex flex-col justify-between h-full overflow-hidden">
       {/* Workspace Header */}
       <div className="convo-head select-none">
         <div className="flex items-center justify-between w-full">
           <div>
-            <h2 className="font-serif italic">
-              {fileName} — <em>{activeChapter?.title || 'Chapter Workspace'}</em>
+            <h2 className="font-serif italic" title={fileName || ''}>
+              {truncateMiddle(fileName, 32)} — <em>{activeChapter?.title || 'Chapter Workspace'}</em>
             </h2>
             <div className="meta text-xs text-muted flex items-center gap-2 mt-0.5">
-              <span>Target: <strong>{getLanguageLabel(targetLanguage)}</strong></span>
+              <span className="flex items-center gap-1">
+                Target: 
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${isRtl ? 'bg-amber-soft text-amber border-amber/20' : 'bg-forest-soft text-forest border-forest/20'}`}>
+                  {getLanguageLabel(targetLanguage)} ({isRtl ? 'RTL' : 'LTR'})
+                </span>
+              </span>
               <span>·</span>
               <span>Chapter {currentChapterIdx + 1} of {chapters.length}</span>
               <span>·</span>
-              <span>Page {currentPageIdx + 1} of {totalPagesInChapter} (Absolute: {absolutePageNum + 1})</span>
+              <span>Page {currentPageIdx + 1} of {totalPagesInChapter}</span>
             </div>
           </div>
 

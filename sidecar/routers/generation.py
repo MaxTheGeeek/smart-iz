@@ -238,6 +238,51 @@ async def stream_generation_endpoint(
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
 
+class ChatRequest(BaseModel):
+    prompt: str
+    system_prompt: Optional[str] = "You are a helpful, extremely capable AI assistant."
+
+@router.post("/chat")
+async def chat_endpoint(
+    payload: ChatRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    SSE stream endpoint for general AI chat assistant.
+    """
+    async def sse_generator():
+        llm_config = await crud.get_llm_config(db)
+        if not llm_config:
+            pref_model = "google/gemini-2.0-flash-exp:free"
+            fallbacks = '["google/gemini-2.0-flash-exp:free","meta-llama/llama-3.3-70b-instruct:free"]'
+            openrouter_key = None
+            groq_key = None
+        else:
+            pref_model = llm_config.preferred_model
+            fallbacks = llm_config.fallback_chain
+            openrouter_key = llm_config.openrouter_key
+            groq_key = llm_config.groq_key
+
+        try:
+            async for event_str in stream_completion_with_fallback(
+                prompt=payload.prompt,
+                system_prompt=payload.system_prompt,
+                preferred_model=pref_model,
+                fallback_chain_json=fallbacks,
+                openrouter_key=openrouter_key,
+                groq_key=groq_key,
+                temperature=0.7
+            ):
+                yield f"data: {event_str}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        sse_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
+
 class RenderRequest(BaseModel):
     session_id: str
     letter_text: str

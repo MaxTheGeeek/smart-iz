@@ -36,6 +36,7 @@ interface AppState {
   // Navigation & Session
   activeScreen: 'landing' | 'analyzing' | 'setup' | 'generating' | 'review' | 'settings' | 'merge' | 'translator'
   selectedSkill: SkillType
+  sidebarOpen: boolean
   
   // Data State
   positionText: string
@@ -56,6 +57,7 @@ interface AppState {
   // Actions
   setScreen: (screen: AppState['activeScreen']) => void
   setSelectedSkill: (skill: SkillType) => void
+  setSidebarOpen: (open: boolean) => void
   setPositionText: (text: string) => void
   setPositionData: (data: PositionParseResult | null) => void
   setLanguage: (lang: 'en' | 'de') => void
@@ -74,6 +76,7 @@ interface AppState {
 const initialState = {
   activeScreen: 'landing' as const,
   selectedSkill: 'chat' as SkillType,
+  sidebarOpen: true,
   positionText: '',
   positionData: null,
   language: 'en' as const,
@@ -93,6 +96,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   setScreen: (screen) => set({ activeScreen: screen }),
   setSelectedSkill: (skill) => set({ selectedSkill: skill }),
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setPositionText: (text) => set({ positionText: text }),
   setPositionData: (data) => set({ positionData: data }),
   setLanguage: (lang) => set({ language: lang }),
