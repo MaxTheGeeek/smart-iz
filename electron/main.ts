@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { spawn, ChildProcess } from 'child_process'
 import path from 'path'
+import fs from 'fs'
 
 let mainWindow: BrowserWindow | null = null
 let sidecar: ChildProcess | null = null
@@ -12,6 +13,20 @@ function spawnSidecar() {
     ? path.join(__dirname, '../../sidecar/main.py')
     : path.join(process.resourcesPath, 'sidecar/smartiz-sidecar')
 
+  // Set executable permissions in production environment to resolve permission issues
+  if (!isDev) {
+    try {
+      if (fs.existsSync(sidecarPath)) {
+        fs.chmodSync(sidecarPath, 0o755)
+        console.log(`[main] Successfully set executable permissions for: ${sidecarPath}`)
+      } else {
+        console.error(`[main] Sidecar binary not found at: ${sidecarPath}`)
+      }
+    } catch (err) {
+      console.error(`[main] Failed to chmod sidecar binary:`, err)
+    }
+  }
+
   const command = isDev
     ? (process.platform === 'win32' ? 'python' : 'python3')
     : sidecarPath
@@ -22,14 +37,19 @@ function spawnSidecar() {
 
   console.log(`[main] Spawning sidecar: ${command} ${args.join(' ')}`)
 
-  sidecar = spawn(command, args, {
-    cwd: isDev ? path.join(__dirname, '../../sidecar') : undefined,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  try {
+    sidecar = spawn(command, args, {
+      cwd: isDev ? path.join(__dirname, '../../sidecar') : undefined,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
 
-  sidecar.stdout?.on('data', (d) => console.log('[sidecar]', d.toString().trim()))
-  sidecar.stderr?.on('data', (d) => console.error('[sidecar err]', d.toString().trim()))
-  sidecar.on('close', (code) => console.log('[sidecar] exited with code', code))
+    sidecar.stdout?.on('data', (d) => console.log('[sidecar]', d.toString().trim()))
+    sidecar.stderr?.on('data', (d) => console.error('[sidecar err]', d.toString().trim()))
+    sidecar.on('error', (err) => console.error('[main] Sidecar failed to start/spawn:', err))
+    sidecar.on('close', (code) => console.log('[sidecar] exited with code', code))
+  } catch (err) {
+    console.error('[main] Exception caught spawning sidecar:', err)
+  }
 }
 
 async function waitForSidecar(callback: () => void) {

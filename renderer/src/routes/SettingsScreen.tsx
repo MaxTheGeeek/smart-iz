@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 
 // Base URL matching main Electron preload / backend connection
-const API_BASE = 'http://localhost:8765/api'
+const API_BASE = 'http://127.0.0.1:8765/api'
 
 export default function SettingsScreen() {
   const queryClient = useQueryClient()
