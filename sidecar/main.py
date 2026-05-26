@@ -7,14 +7,19 @@ from models.database import engine, AsyncSessionLocal
 from models.orm import Base
 from services.crud import get_llm_config, update_llm_config, get_user_profile, update_user_profile
 from models.schemas import LLMConfigUpdate, UserProfileUpdate
-from routers import resumes, templates, settings, generation, parsing, merge, translator
+from routers import resumes, templates, settings, composer, merge, translator
 
 
+
+
+from sqlalchemy import text
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Programmatic database initialization (ideal for local desktop deployment)
     async with engine.begin() as conn:
+        await conn.execute(text("DROP TABLE IF EXISTS generation_sessions"))
+        await conn.execute(text("DROP TABLE IF EXISTS cover_letters"))
         await conn.run_sync(Base.metadata.create_all)
     
     # Seeding initial configurations
@@ -48,8 +53,7 @@ app.add_middleware(
 app.include_router(resumes.router)
 app.include_router(templates.router)
 app.include_router(settings.router)
-app.include_router(generation.router)
-app.include_router(parsing.router)
+app.include_router(composer.router)
 app.include_router(merge.router)
 app.include_router(translator.router)
 

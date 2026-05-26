@@ -4,10 +4,6 @@ import { WindowChrome, Sidebar, SidebarToggleRail } from './components/SharedUI'
 
 // Import Screens
 import LandingScreen from './routes/LandingScreen'
-import AnalyzingScreen from './routes/AnalyzingScreen'
-import SetupScreen from './routes/SetupScreen'
-import GeneratingScreen from './routes/GeneratingScreen'
-import ReviewScreen from './routes/ReviewScreen'
 import SettingsScreen from './routes/SettingsScreen'
 import MergeScreen from './routes/MergeScreen'
 import TranslatorScreen from './routes/TranslatorScreen'
@@ -90,14 +86,6 @@ export default function App() {
     switch (activeScreen) {
       case 'landing':
         return <LandingScreen />
-      case 'analyzing':
-        return <AnalyzingScreen />
-      case 'setup':
-        return <SetupScreen />
-      case 'generating':
-        return <GeneratingScreen />
-      case 'review':
-        return <ReviewScreen />
       case 'settings':
         return <SettingsScreen />
       case 'merge':

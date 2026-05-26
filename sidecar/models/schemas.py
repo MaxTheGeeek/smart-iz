@@ -165,3 +165,57 @@ class GenerationSessionRead(GenerationSessionBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Cover Letter Composer schemas ─────────────────────────────────────────────
+
+class ComposeRequest(BaseModel):
+    """
+    Sent by the frontend when the user clicks 'Compose PDF'.
+    All fields except body_paragraphs are optional — the LLM will extract
+    missing values from the body text if they are empty strings.
+    """
+    company_name:    str       = ""
+    contact_person:  str       = ""
+    company_address: str       = ""
+    position:        str       = ""
+    salutation:      str       = ""
+    body_paragraphs: list[str] = []   # one string per paragraph
+    sign_off:        str       = "Mit freundlichen Grüßen,"
+    template_version: str      = "v1"  # "v1" or "v2"
+    # letter_date is always auto-generated server-side (today) — not sent by client
+
+
+class ComposeResponse(BaseModel):
+    cover_letter_id: str
+    letter_date:     str
+    company_name:    str
+    position:        str
+    preview_url:     str    # GET this URL to stream the PDF bytes for preview
+    export_url:      str    # GET this URL to download the final PDF
+
+
+class ExtractFieldsRequest(BaseModel):
+    """
+    Sent when the user pastes body text but hasn't filled in the fields.
+    The LLM reads the text and returns what it can find.
+    This call is optional — the user can always fill fields manually.
+    """
+    text: str
+
+
+class ExtractFieldsResponse(BaseModel):
+    company_name:    str | None = None
+    contact_person:  str | None = None
+    company_address: str | None = None
+    position:        str | None = None
+    salutation:      str | None = None
+
+
+class CoverLetterHistoryItem(BaseModel):
+    id:              str
+    company_name:    str
+    position:        str
+    letter_date:     str
+    status:          str
+    created_at:      str

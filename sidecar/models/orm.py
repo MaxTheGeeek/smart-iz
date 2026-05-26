@@ -1,7 +1,7 @@
 import datetime
 import uuid
 from typing import List, Optional
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, func
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, func, Column
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
@@ -33,7 +33,7 @@ class Resume(Base):
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON-serialized array
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
-    cover_letters: Mapped[List["CoverLetter"]] = relationship("CoverLetter", back_populates="resume")
+
 
 class Template(Base):
     __tablename__ = "templates"
@@ -51,26 +51,22 @@ class Template(Base):
 class CoverLetter(Base):
     __tablename__ = "cover_letters"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    session_id: Mapped[str] = mapped_column(String(36), nullable=False)
-    position_title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    company_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    contact_person: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    language: Mapped[str] = mapped_column(String(10), default="en")  # 'en', 'de'
-    style_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    resume_id: Mapped[Optional[str]] = mapped_column(ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
-    template_id: Mapped[Optional[str]] = mapped_column(ForeignKey("templates.id", ondelete="SET NULL"), nullable=True)
-    raw_letter_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    qa_letter_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    final_letter_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    pdf_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default="draft")  # 'draft', 'qa_passed', 'exported'
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    id               = Column(String,   primary_key=True, default=lambda: str(uuid.uuid4()))
+    template_id      = Column(String,   ForeignKey("templates.id"), nullable=True)
+    company_name     = Column(String,   nullable=False, default="")
+    contact_person   = Column(String,   nullable=True)
+    company_address  = Column(String,   nullable=True)
+    position         = Column(String,   nullable=False, default="")
+    salutation       = Column(String,   nullable=True)
+    body_paragraphs  = Column(Text,     nullable=False, default="[]")  # JSON array of strings
+    sign_off         = Column(String,   nullable=True)
+    letter_date      = Column(String,   nullable=False, default="")
+    composed_pdf_path = Column(String,  nullable=True)
+    status           = Column(String,   default="draft")   # 'draft' | 'composed' | 'exported'
+    created_at       = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at       = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
-    resume: Mapped[Optional["Resume"]] = relationship("Resume", back_populates="cover_letters")
-    template: Mapped[Optional["Template"]] = relationship("Template", back_populates="cover_letters")
-    sessions: Mapped[List["GenerationSession"]] = relationship("GenerationSession", back_populates="cover_letter")
+    template = relationship("Template", back_populates="cover_letters")
 
 class LLMConfig(Base):
     __tablename__ = "llm_config"
@@ -98,7 +94,7 @@ class GenerationSession(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    cover_letter: Mapped[Optional["CoverLetter"]] = relationship("CoverLetter", back_populates="sessions")
+    cover_letter: Mapped[Optional["CoverLetter"]] = relationship("CoverLetter")
 
 class TranslatorDocument(Base):
     __tablename__ = "translator_documents"

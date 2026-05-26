@@ -34,7 +34,7 @@ export type SkillType = 'chat' | 'cover_letter' | 'translate' | 'analyze'
 
 interface AppState {
   // Navigation & Session
-  activeScreen: 'landing' | 'analyzing' | 'setup' | 'generating' | 'review' | 'settings' | 'merge' | 'translator'
+  activeScreen: 'landing' | 'settings' | 'merge' | 'translator'
   selectedSkill: SkillType
   sidebarOpen: boolean
   
