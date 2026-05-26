@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-import pdfplumber
+from pypdf import PdfReader
 
 from models.database import get_db
 from models.orm import TranslatorDocument, TranslatorChapter, TranslatorExport
@@ -51,8 +51,8 @@ async def upload_document(
 
     # Count total pages immediately
     try:
-        with pdfplumber.open(dest) as pdf:
-            total_pages = len(pdf.pages)
+        reader = PdfReader(dest)
+        total_pages = len(reader.pages)
     except Exception as e:
         if dest.exists():
             dest.unlink()
@@ -208,10 +208,10 @@ async def get_original_page_text(
         raise HTTPException(status_code=404, detail="Document not found.")
 
     try:
-        with pdfplumber.open(doc.file_path) as pdf:
-            if absolute_page < 0 or absolute_page >= len(pdf.pages):
-                raise HTTPException(status_code=400, detail="Page index out of bounds.")
-            page_text = pdf.pages[absolute_page].extract_text() or ""
+        reader = PdfReader(doc.file_path)
+        if absolute_page < 0 or absolute_page >= len(reader.pages):
+            raise HTTPException(status_code=400, detail="Page index out of bounds.")
+        page_text = reader.pages[absolute_page].extract_text() or ""
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read page text: {str(e)}")
 

@@ -1,6 +1,7 @@
 import os
 import json
-import pdfplumber
+import re
+from pypdf import PdfReader
 from services.llm_engine import stream_completion_with_fallback
 
 PROMPT_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "prompts", "extract_toc.txt")
@@ -35,6 +36,41 @@ def is_toc_page(text: str) -> bool:
         
     return False
 
+def _clean_title(title: str) -> str:
+    # Remove common prefixes like "Chapter 1:", "Kapitel 2.", "Part I.", "1.", etc.
+    t = re.sub(r'^(chapter|kapitel|part|teil)\s*\d+[:\.]?\s*', '', title, flags=re.IGNORECASE)
+    t = re.sub(r'^\d+[\s\.:]+', '', t)
+    t = t.strip("\"' \t\r\n")
+    return t
+
+def _find_chapter_page_after_toc(reader: PdfReader, title: str, start_page: int) -> int:
+    cleaned = _clean_title(title)
+    cleaned_lower = cleaned.lower()
+    words = [w for w in re.split(r'\W+', cleaned_lower) if w]
+    if not words:
+        return -1
+        
+    total_pages = len(reader.pages)
+    
+    # First pass: look for exact heading line in the first 8 lines
+    for idx in range(start_page, total_pages):
+        text = reader.pages[idx].extract_text() or ""
+        lines = [l.strip().lower() for l in text.split("\n") if l.strip()]
+        
+        # Check first 8 lines
+        for line in lines[:8]:
+            if cleaned_lower in line:
+                return idx
+                
+    # Second pass: check if all words appear in the text (fallback)
+    for idx in range(start_page, total_pages):
+        text = reader.pages[idx].extract_text() or ""
+        text_lower = text.lower()
+        if all(w in text_lower for w in words):
+            return idx
+            
+    return -1
+
 async def extract_toc(
     pdf_path: str,
     preferred_model: str,
@@ -52,17 +88,17 @@ async def extract_toc(
 
     # 2. Extract first 15 pages and find if any are Table of Contents sheets
     toc_pages = set()
-    with pdfplumber.open(pdf_path) as pdf:
-        total_pages = len(pdf.pages)
-        sample_pages = min(15, total_pages)
-        toc_text = ""
-        for i in range(sample_pages):
-            toc_text += f"\n--- PAGE {i+1} ---\n"
-            page_text = pdf.pages[i].extract_text()
-            if page_text:
-                toc_text += page_text
-                if is_toc_page(page_text):
-                    toc_pages.add(i)
+    reader = PdfReader(pdf_path)
+    total_pages = len(reader.pages)
+    sample_pages = min(15, total_pages)
+    toc_text = ""
+    for i in range(sample_pages):
+        toc_text += f"\n--- PAGE {i+1} ---\n"
+        page_text = reader.pages[i].extract_text()
+        if page_text:
+            toc_text += page_text
+            if is_toc_page(page_text):
+                toc_pages.add(i)
 
     # 3. Determine first actual reading page (skipping any TOC sheets)
     first_reading_page = 0
@@ -129,7 +165,24 @@ async def extract_toc(
             })
             idx += 1
 
-    # 7. Fill gaps and validate (excluding TOC pages)
+    # 7. Map chapter printed page numbers to real 0-based PDF page indexes
+    current_search_page = first_reading_page
+    for ch in chapters:
+        title = ch.get("title", "")
+        page = _find_chapter_page_after_toc(reader, title, current_search_page)
+        if page != -1:
+            ch["page_start"] = page
+            current_search_page = page + 1
+        else:
+            # Fallback estimation if title search misses
+            if "page_start" not in ch or ch["page_start"] < first_reading_page:
+                ch["page_start"] = current_search_page
+                current_search_page = current_search_page + 20
+            else:
+                ch["page_start"] = max(ch["page_start"], current_search_page)
+                current_search_page = ch["page_start"] + 1
+
+    # 8. Fill gaps and validate (excluding TOC pages)
     chapters = _fill_page_gaps(chapters, total_pages, first_reading_page)
     return chapters
 
