@@ -275,7 +275,7 @@ export default function LandingScreen() {
   }
 
   return (
-    <div className="shell flex flex-col" style={{ height: 'calc(100vh - 38px)', overflow: 'hidden' }}>
+    <div className="flex-1 flex flex-col" style={{ height: 'calc(100vh - 38px)', overflow: 'hidden' }}>
       
       {/* HEADER SECTION */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-[var(--line)] bg-[var(--bg-glass)] backdrop-blur-md z-10">
