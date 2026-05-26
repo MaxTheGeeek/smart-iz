@@ -258,7 +258,9 @@ body { margin: 0; font-family: var(--sans); color: var(--ink); }
   font-size: 12px;
   color: var(--muted);
 }
-.pill-dot { width:6px; height:6px; border-radius:50%; background: var(--forest); display:inline-block; margin-right:6px; box-shadow: 0 0 0 3px rgba(63,90,45,.18);}
+.pill-dot { width:6px; height:6px; border-radius:50%; display:inline-block; margin-right:6px; }
+.pill-dot.bg-forest { background: var(--forest); box-shadow: 0 0 0 3px rgba(138,171,107,.18); }
+.pill-dot.bg-burgundy { background: var(--burgundy); box-shadow: 0 0 0 3px rgba(194,104,69,.18); }
 
 /* ───────── App shell ───────── */
 .shell { flex: 1; display: grid; grid-template-columns: 248px 1fr; min-height: 0; }

@@ -90,10 +90,11 @@ function parsePastedCoverLetter(text: string): ParsedLetter {
     'hello', 'hi', 'to whom', 'wertvolle', 'hallo', 'achtung'
   ]
   for (let i = 0; i < lines.length; i++) {
-    const lowerLine = lines[i].toLowerCase()
+    const cleanLine = lines[i].replace(/^\*+|\*+$/g, '').trim()
+    const lowerLine = cleanLine.toLowerCase()
     if (salutationKeywords.some(kw => lowerLine.startsWith(kw))) {
       salutationIndex = i
-      salutation = lines[i]
+      salutation = cleanLine
       break
     }
   }
@@ -106,10 +107,11 @@ function parsePastedCoverLetter(text: string): ParsedLetter {
     'yours sincerely', 'respectfully', 'gruss', 'grüße', 'grüsse', 'cheers'
   ]
   for (let i = lines.length - 1; i >= 0; i--) {
-    const lowerLine = lines[i].toLowerCase()
+    const cleanLine = lines[i].replace(/^\*+|\*+$/g, '').trim()
+    const lowerLine = cleanLine.toLowerCase()
     if (signOffKeywords.some(kw => lowerLine.startsWith(kw))) {
       signOffIndex = i
-      sign_off = lines[i]
+      sign_off = cleanLine
       break
     }
   }
@@ -119,27 +121,39 @@ function parsePastedCoverLetter(text: string): ParsedLetter {
   const headerLines = lines.slice(0, headerLimit)
   
   for (let line of headerLines) {
-    const lowerLine = line.toLowerCase()
+    const cleanLine = line.replace(/^\*+|\*+$/g, '').trim()
+    if (!cleanLine) continue
+
+    const lowerCleanLine = cleanLine.toLowerCase()
+
+    // Skip applicant's contact info / name / address
+    const skipKeywords = [
+      'majid', 'behzadi', 'maxbehzadi', 'wehlistraße', 'wehlistrasse', '1020 wien', 
+      '+43', '676 970 1820', '@gmail.com', '@', 'tel:', 'mobil:', 'phone:', 'email:', 'e-mail:', 'website:'
+    ]
+    if (skipKeywords.some(kw => lowerCleanLine.includes(kw))) {
+      continue
+    }
 
     // Skip date lines (e.g. "Wien, 26. Mai 2026")
-    if (lowerLine.includes('2026') || lowerLine.includes('2025') || lowerLine.includes('mai') || lowerLine.includes('may') || /\d{1,2}\./.test(line)) {
-      if (line.includes(',') || line.includes('.')) {
+    if (lowerCleanLine.includes('2026') || lowerCleanLine.includes('2025') || lowerCleanLine.includes('mai') || lowerCleanLine.includes('may') || /\d{1,2}\./.test(cleanLine)) {
+      if (cleanLine.includes(',') || cleanLine.includes('.')) {
         continue
       }
     }
 
     // Identify position / subject
-    if (lowerLine.startsWith('bewerbung') || lowerLine.startsWith('betreff') || lowerLine.startsWith('subject') || lowerLine.startsWith('application')) {
-      position = line.replace(/^(bewerbung als|bewerbung auf|bewerbung|application for|application|subject:|betreff:)\s*/i, '').trim()
+    if (lowerCleanLine.startsWith('bewerbung') || lowerCleanLine.startsWith('betreff') || lowerCleanLine.startsWith('subject') || lowerCleanLine.startsWith('application')) {
+      position = cleanLine.replace(/^(bewerbung als|bewerbung auf|bewerbung|application for|application|subject:|betreff:)\s*/i, '').trim()
       // Capitalize first letter
       position = position.charAt(0).toUpperCase() + position.slice(1)
       continue
     }
 
     // Check for "z. Hd." or "z.Hd." or "Attention"
-    if (line.includes('z. Hd.') || line.includes('z.Hd.') || lowerLine.includes('z.hd') || lowerLine.includes('attention')) {
-      const zhMark = line.includes('z. Hd.') ? 'z. Hd.' : (line.includes('z.Hd.') ? 'z.Hd.' : 'z. Hd.')
-      const parts = line.split(zhMark)
+    if (cleanLine.includes('z. Hd.') || cleanLine.includes('z.Hd.') || lowerCleanLine.includes('z.hd') || lowerCleanLine.includes('attention')) {
+      const zhMark = cleanLine.includes('z. Hd.') ? 'z. Hd.' : (cleanLine.includes('z.Hd.') ? 'z.Hd.' : 'z. Hd.')
+      const parts = cleanLine.split(zhMark)
       
       const comp = parts[0].trim()
       const afterZh = parts[1].trim()
@@ -175,9 +189,9 @@ function parsePastedCoverLetter(text: string): ParsedLetter {
 
     // Default headers
     if (!company_name) {
-      company_name = line
+      company_name = cleanLine
     } else if (!company_address) {
-      company_address = line
+      company_address = cleanLine
     }
   }
 
@@ -198,7 +212,7 @@ function parsePastedCoverLetter(text: string): ParsedLetter {
     company_address: company_address.trim(),
     position: position.trim(),
     salutation: salutation.trim(),
-    body_paragraphs,
+    body_paragraphs: body_paragraphs.map(p => p.trim()),
     sign_off: sign_off.trim()
   }
 }
@@ -290,7 +304,16 @@ export default function LandingScreen() {
         body: JSON.stringify(payload),
       })
 
-      if (!res.ok) throw new Error('Rendern des PDFs fehlgeschlagen')
+      if (!res.ok) {
+        let errMsg = 'Rendern des PDFs fehlgeschlagen'
+        try {
+          const errData = await res.json()
+          if (errData && errData.detail) {
+            errMsg = errData.detail
+          }
+        } catch (_) {}
+        throw new Error(errMsg)
+      }
 
       const data = await res.json()
       setActiveLetterId(data.cover_letter_id)
@@ -370,7 +393,16 @@ export default function LandingScreen() {
         body: JSON.stringify(payload),
       })
 
-      if (!res.ok) throw new Error('Rendern fehlgeschlagen')
+      if (!res.ok) {
+        let errMsg = 'Rendern fehlgeschlagen'
+        try {
+          const errData = await res.json()
+          if (errData && errData.detail) {
+            errMsg = errData.detail
+          }
+        } catch (_) {}
+        throw new Error(errMsg)
+      }
 
       const data = await res.json()
       setActiveLetterId(data.cover_letter_id)

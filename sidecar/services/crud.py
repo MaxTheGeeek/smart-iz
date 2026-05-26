@@ -1,7 +1,8 @@
 from typing import List, Optional
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.orm import UserProfile, Resume, Template, CoverLetter, LLMConfig, GenerationSession
+from models.orm import UserProfile, Resume, Template, CoverLetter, LLMConfig, GenerationSession, SystemLog
+
 from models.schemas import (
     UserProfileCreate, UserProfileUpdate,
     ResumeCreate, ResumeUpdate,
@@ -183,3 +184,30 @@ async def update_generation_session(db: AsyncSession, session_id: str, session: 
     await db.commit()
     await db.refresh(db_session)
     return db_session
+
+# ==================== System Logs CRUD ====================
+async def get_logs(db: AsyncSession, limit: int = 100) -> List[SystemLog]:
+    result = await db.execute(
+        select(SystemLog)
+        .order_by(desc(SystemLog.timestamp))
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+async def add_log(db: AsyncSession, level: str, message: str) -> SystemLog:
+    db_log = SystemLog(level=level, message=message)
+    db.add(db_log)
+    await db.commit()
+    
+    # Prune logs to keep only the last 100 entries
+    result = await db.execute(select(SystemLog).order_by(desc(SystemLog.timestamp)))
+    all_logs = result.scalars().all()
+    if len(all_logs) > 100:
+        to_delete = all_logs[100:]
+        for old_log in to_delete:
+            await db.delete(old_log)
+        await db.commit()
+        
+    await db.refresh(db_log)
+    return db_log
+

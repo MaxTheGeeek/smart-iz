@@ -26,7 +26,7 @@ from models.schemas import (
     CoverLetterHistoryItem,
 )
 from services.pdf_composer import compose_cover_letter_pdf
-from services.crud import get_llm_config
+from services.crud import get_llm_config, add_log
 from services.llm_engine import stream_completion_with_fallback
 
 router = APIRouter(prefix="/api/composer")
@@ -89,6 +89,8 @@ async def compose(request: ComposeRequest, db=Depends(get_db)):
     db.add(record)
     await db.commit()
 
+    await add_log(db, "INFO", f"Composing cover letter draft (ID: {cover_letter_id}) for {request.company_name} (Position: {request.position or 'N/A'}) using template version {request.template_version}")
+
     # Render PDF
     output_path = str(EXPORTS_DIR / f"cover_{cover_letter_id[:8]}.pdf")
     try:
@@ -105,12 +107,16 @@ async def compose(request: ComposeRequest, db=Depends(get_db)):
             sign_off=request.sign_off,
         )
     except Exception as e:
+        await add_log(db, "ERROR", f"PDF render failed for draft {cover_letter_id}: {str(e)}")
         raise HTTPException(500, f"PDF render failed: {e}")
 
     # Update record with PDF path
     record.composed_pdf_path = output_path
     record.status = "composed"
     await db.commit()
+
+    await add_log(db, "INFO", f"Successfully generated cover letter PDF (ID: {cover_letter_id}) at path: {output_path}")
+
 
     return ComposeResponse(
         cover_letter_id=cover_letter_id,
@@ -190,10 +196,13 @@ COVER LETTER TEXT:
                  .removesuffix("```")
                  .strip())
         data = json.loads(clean)
+        await add_log(db, "INFO", f"Successfully extracted fields using LLM: {json.dumps(data)}")
         return ExtractFieldsResponse(**{
             k: v for k, v in data.items() if v  # drop null/empty values
         })
-    except Exception:
+    except Exception as e:
+        import traceback
+        await add_log(db, "ERROR", f"LLM Field extraction failed: {str(e)}\n{traceback.format_exc()}")
         return ExtractFieldsResponse()   # always degrade gracefully
 
 

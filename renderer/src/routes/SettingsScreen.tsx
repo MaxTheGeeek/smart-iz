@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '../store/useAppStore'
 import { 
   User, FileText, Layout, Key, Save, Trash2, 
-  Upload, HelpCircle, CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff 
+  Upload, HelpCircle, CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff, Terminal
 } from 'lucide-react'
 
 // Base URL matching main Electron preload / backend connection
@@ -12,7 +12,7 @@ const API_BASE = 'http://localhost:8765/api'
 export default function SettingsScreen() {
   const queryClient = useQueryClient()
   const { setScreen } = useAppStore()
-  const [activeTab, setActiveTab] = useState<'profile' | 'resumes' | 'templates' | 'apiKeys'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'resumes' | 'templates' | 'apiKeys' | 'logs'>('profile')
 
   // Toast indicator state
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
@@ -130,6 +130,17 @@ export default function SettingsScreen() {
     onError: (err: any) => {
       showToast(err.message || 'Error deleting template', 'error')
     }
+  })
+
+  // 5. System Logs Query
+  const { data: systemLogs = [], isLoading: isLogsLoading, refetch: refetchLogs } = useQuery({
+    queryKey: ['systemLogs'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/settings/logs`)
+      if (!res.ok) throw new Error('Failed to load system logs')
+      return res.json()
+    },
+    enabled: activeTab === 'logs'
   })
 
   // ==================== Local Component States ====================
@@ -371,6 +382,18 @@ export default function SettingsScreen() {
         >
           <Key className="w-4 h-4" />
           API Keys & LLMs
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('logs')}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 text-sm font-medium transition-all duration-150 ${
+            activeTab === 'logs'
+              ? 'border-burgundy text-burgundy font-bold'
+              : 'border-transparent text-muted hover:text-ink hover:border-line'
+          }`}
+        >
+          <Terminal className="w-4 h-4" />
+          Diagnostics & Logs
         </button>
       </div>
 
@@ -863,6 +886,79 @@ export default function SettingsScreen() {
                 </button>
               </div>
             </form>
+          )}
+
+          {/* 5. Diagnostics & Logs */}
+          {activeTab === 'logs' && (
+            <div className="space-y-6 select-none">
+              <div className="border-b border-line pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-serif italic text-ink flex items-center gap-2">
+                    <Terminal className="w-5 h-5 text-burgundy" />
+                    System Diagnostics & Logs
+                  </h2>
+                  <p className="text-xs text-muted mt-0.5">
+                    View local sidecar backend tracebacks and activity logs. The database retains the last 100 entries.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => refetchLogs()}
+                    className="btn text-xs flex items-center gap-1.5 hover:bg-surface-2 transition"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLogsLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const logText = systemLogs
+                        .map((l: any) => `[${new Date(l.timestamp).toISOString()}] [${l.level}] ${l.message}`)
+                        .join('\n')
+                      navigator.clipboard.writeText(logText)
+                      showToast('Copied logs to clipboard!', 'success')
+                    }}
+                    disabled={systemLogs.length === 0}
+                    className="btn primary text-xs flex items-center gap-1.5 disabled:opacity-50 transition"
+                  >
+                    Copy All Logs
+                  </button>
+                </div>
+              </div>
+
+              {isLogsLoading ? (
+                <div className="h-44 bg-surface-2 rounded-xl animate-pulse flex items-center justify-center">
+                  <span className="text-xs text-muted">Loading logs...</span>
+                </div>
+              ) : systemLogs.length === 0 ? (
+                <div className="p-8 text-center text-sm border border-line rounded-2xl text-muted">
+                  No system logs available yet.
+                </div>
+              ) : (
+                <div className="border border-line rounded-xl overflow-hidden bg-surface-2/30 max-h-[400px] overflow-y-auto font-mono text-xs p-4 flex flex-col gap-3">
+                  {systemLogs.map((log: any) => (
+                    <div key={log.id} className="pb-3 border-b border-line/40 last:border-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[10px] text-muted font-sans">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold font-sans ${
+                          log.level === 'ERROR' ? 'bg-burgundy-soft text-burgundy' :
+                          log.level === 'WARNING' ? 'bg-amber-soft text-amber' :
+                          'bg-forest-soft text-forest'
+                        }`}>
+                          {log.level}
+                        </span>
+                      </div>
+                      <div className="text-ink-2 whitespace-pre-wrap leading-relaxed select-text select-all selection:bg-burgundy-soft">
+                        {log.message}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
       </div>

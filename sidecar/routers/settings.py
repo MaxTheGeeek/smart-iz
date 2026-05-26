@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.database import get_db
-from models.schemas import UserProfileRead, UserProfileUpdate, LLMConfigRead, LLMConfigUpdate
+from models.schemas import UserProfileRead, UserProfileUpdate, LLMConfigRead, LLMConfigUpdate, SystemLogRead
 import services.crud as crud
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -66,3 +66,19 @@ async def test_api_connection(payload: dict):
             return {"status": "error", "message": f"Connection failed: {str(e)}"}
             
     raise HTTPException(status_code=400, detail="Unsupported provider.")
+
+
+@router.get("/logs", response_model=list[SystemLogRead])
+async def get_system_logs(db: AsyncSession = Depends(get_db)):
+    return await crud.get_logs(db)
+
+
+@router.post("/logs")
+async def add_system_log(payload: dict, db: AsyncSession = Depends(get_db)):
+    level = payload.get("level", "INFO")
+    message = payload.get("message")
+    if not message:
+        raise HTTPException(status_code=400, detail="Missing message.")
+    log_item = await crud.add_log(db, level, message)
+    return {"status": "success", "log_id": log_item.id}
+

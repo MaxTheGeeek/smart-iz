@@ -1,6 +1,6 @@
 import uvicorn
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from models.database import engine, AsyncSessionLocal
@@ -49,6 +49,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from fastapi.responses import JSONResponse
+import traceback
+from services.crud import add_log
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    is_health = request.url.path == "/health"
+    try:
+        response = await call_next(request)
+        if not is_health and response.status_code >= 400:
+            async with AsyncSessionLocal() as session:
+                await add_log(session, "WARNING", f"Request {request.method} {request.url.path} returned {response.status_code}")
+        return response
+    except Exception as e:
+        error_msg = f"Unhandled exception during {request.method} {request.url.path}: {str(e)}\n{traceback.format_exc()}"
+        print(f"[ERROR] {error_msg}")
+        async with AsyncSessionLocal() as session:
+            await add_log(session, "ERROR", error_msg)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal Server Error: {str(e)}"}
+        )
+
 
 app.include_router(resumes.router)
 app.include_router(templates.router)

@@ -219,3 +219,13 @@ class CoverLetterHistoryItem(BaseModel):
     letter_date:     str
     status:          str
     created_at:      str
+
+
+class SystemLogRead(BaseModel):
+    id: int
+    level: str
+    message: str
+    timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
