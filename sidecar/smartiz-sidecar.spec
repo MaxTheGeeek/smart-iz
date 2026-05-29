@@ -1,11 +1,10 @@
-# -*- mode: python ; coding: utf-8 -*-
-
+from PyInstaller.utils.hooks import collect_data_files
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('prompts', 'prompts')],
+    datas=[('prompts', 'prompts'), ('assets', 'assets')] + collect_data_files('litellm'),
     hiddenimports=['tiktoken_ext.openai_public', 'tiktoken_ext.cl100k_base', 'aiosqlite'],
     hookspath=[],
     hooksconfig={},
