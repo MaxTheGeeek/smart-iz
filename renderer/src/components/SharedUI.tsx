@@ -285,7 +285,7 @@ export function Sidebar() {
       <div className="nav-section">
         <div className="nav-label">Recent</div>
         <div className="history-list">
-          <div className="hist active" onClick={() => setScreen('review')}>
+          <div className="hist active" onClick={() => setScreen('landing')}>
             <div className="hist-title">
               Senior Backend at <em>Anthropic</em>
             </div>
