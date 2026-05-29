@@ -216,7 +216,7 @@ export function Sidebar() {
           <div className="brand-name" style={{ fontSize: '16px', fontWeight: 'bold', fontFamily: 'var(--serif)', fontStyle: 'italic', display: 'flex', alignItems: 'center' }}>
             Smartiz
           </div>
-          <div className="brand-sub" style={{ fontSize: '10px', opacity: 0.7, margin: 0 }}>v1.1.3 · local</div>
+          <div className="brand-sub" style={{ fontSize: '10px', opacity: 0.7, margin: 0 }}>v1.3.0</div>
         </div>
       </div>
 
